@@ -19,10 +19,10 @@ export function ProductCard({ product }: { product: Product }) {
         />
       </div>
       <div className="flex flex-1 flex-col gap-2.5 p-6">
-        <p className="eyebrow">{product.category}</p>
+        <p className="eyebrow">{product.tagline}</p>
         <h3 className="text-[19px] leading-tight font-bold">{product.name}</h3>
         <p className="flex-1 text-sm leading-[1.65] text-slate">{product.summary}</p>
-        <span className="mt-2 text-[13px] font-extrabold text-green-700 group-hover:underline">Learn more ↗</span>
+        <span className="mt-2 text-[13px] font-extrabold text-green-700 group-hover:underline">Explore product ↗</span>
       </div>
     </Link>
   );

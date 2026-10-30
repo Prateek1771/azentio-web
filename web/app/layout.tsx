@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: { default: "azentio.ai | Build Intelligence. Create Impact.", template: "%s | azentio.ai" },
   description:
     "Discover applied AI products, intelligent decisioning, enterprise innovation, and product demonstrations at azentio.ai.",
+  openGraph: { siteName: "azentio.ai", type: "website", images: ["/banners/intelligence.svg"] },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
