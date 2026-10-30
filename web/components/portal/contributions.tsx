@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createInsForgeServerClient } from "@/lib/insforge/server";
 import { type Contribution, STATE, TYPES, VISIBILITY } from "@/lib/contributions/model";
 import { cn } from "@/lib/utils";
 
@@ -26,5 +27,18 @@ export function ContributionList({ rows, base }: { rows: Pick<Contribution, "id"
         </li>
       ))}
     </ul>
+  );
+}
+
+// Quality feedback totals: only the contributor and moderators ever see them (no public scores, no leaderboards).
+export async function FeedbackTally({ contribution }: { contribution: string }) {
+  const { data } = await (await createInsForgeServerClient()).database.rpc("feedback_counts", { p_contribution: contribution });
+  const t = ((data ?? []) as { useful: number; needs_evidence: number }[])[0] ?? { useful: 0, needs_evidence: 0 };
+  return (
+    <section aria-label="Reader feedback" className="rounded-[10px] border border-line bg-white p-6 text-sm">
+      <h2 className="text-[17px] font-bold">Reader feedback</h2>
+      <p className="mt-2"><strong>{t.useful}</strong> found it useful · <strong>{t.needs_evidence}</strong> asked for more evidence</p>
+      <p className="mt-1 text-xs text-slate">Only you and moderators see these totals.</p>
+    </section>
   );
 }

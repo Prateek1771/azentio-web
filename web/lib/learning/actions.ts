@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireGrant, requireUser } from "@/lib/authz";
 import { createInsForgeServerClient } from "@/lib/insforge/server";
+import { kickOutbox } from "@/lib/email/outbox";
 
 export type ActionState = { error?: string; ok?: string; values?: Record<string, string> };
 
@@ -27,6 +28,7 @@ export async function publishShared(id: string, _: ActionState, form: FormData):
     p_region: text(form, "region"),
   });
   if (error) return { error: friendly(error, "Couldn't publish the shared copy."), values: values(form) };
+  kickOutbox();
   revalidatePath("/s/moderation", "layout");
   revalidatePath("/learning", "layout");
   redirect(`/s/moderation/${id}?done=published`);
@@ -49,6 +51,7 @@ export async function moderate(_: ActionState, form: FormData): Promise<ActionSt
   const patch = to === "returned" || to === "rejected" ? { state: to, moderator_reason: reason } : { state: to };
   const { data, error } = await insforge.database.from("contributions").update(patch).eq("id", id).select("id");
   if (error || !data?.length) return { error: friendly(error, "That change isn't allowed from the current state.") };
+  kickOutbox();
   revalidatePath("/s/moderation", "layout");
   revalidatePath("/learning", "layout");
   return { ok: to };
@@ -86,6 +89,7 @@ export async function decideReport(form: FormData): Promise<void> {
     if (decision === "upheld") await db.from("contributions").update({ state: "withdrawn" }).eq("id", contribution).in("state", ["published", "unpublished"]);
     else await db.from("contributions").update({ state: "published" }).eq("id", contribution).eq("state", "unpublished");
   }
+  kickOutbox();
   revalidatePath("/s/reports");
   revalidatePath("/learning", "layout");
 }
@@ -153,6 +157,7 @@ export async function saveIdea(id: string | null, _: ActionState, form: FormData
     ? await db.from("ideas").update(row).eq("id", id).select("id").single()
     : await db.from("ideas").insert([row]).select("id").single();
   if (error) return { error: "Couldn't save the idea.", values: values(form) };
+  kickOutbox();
   revalidatePath("/s/insights", "layout");
   revalidatePath("/learning", "layout");
   redirect(`/s/insights/ideas/${(data as { id: string }).id}`);

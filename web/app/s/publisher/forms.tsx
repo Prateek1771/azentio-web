@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toEmbed } from "@/lib/media/embed";
-import { type ActionState, addRecording, createBanner, saveSession } from "./actions";
+import { type ActionState, addRecording, createBanner, createClientContent, saveSession } from "./actions";
 
 const field =
   "w-full rounded-md border border-[#d7e1e8] bg-white px-3.5 py-3 text-[15px] text-ink outline-none focus:border-green-700 focus:ring-3 focus:ring-green/30";
@@ -136,6 +136,40 @@ export function BannerForm() {
       </div>
       <Result s={state} />
       <Submit pending={pending}>Save banner</Submit>
+    </form>
+  );
+}
+
+export function ClientContentForm({ offerings }: { offerings: Offering[] }) {
+  const [state, action, pending] = useActionState(createClientContent, {});
+  return (
+    <form action={action} className="grid gap-5">
+      <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+        <label className={label}>
+          Type
+          <select name="kind" className={field} defaultValue="briefing">
+            <option value="briefing">Client briefing</option>
+            <option value="release_note">Release note</option>
+            <option value="library">Client resource</option>
+          </select>
+        </label>
+        <label className={label}>
+          Offering (entitled clients see it)
+          <select name="offering" className={field} required>
+            {offerings.map((o) => <option key={o.slug} value={o.slug}>{o.name}</option>)}
+          </select>
+        </label>
+      </div>
+      <label className={label}>
+        Title
+        <input name="title" required maxLength={200} className={field} />
+      </label>
+      <label className={label}>
+        Body
+        <textarea name="body" required rows={6} maxLength={10000} className={field} />
+      </label>
+      <Result s={state} />
+      <Submit pending={pending}>Save as draft</Submit>
     </form>
   );
 }

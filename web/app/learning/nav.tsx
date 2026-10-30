@@ -8,6 +8,7 @@ const LINKS = [
   ["/learning", "Shared feed"],
   ["/learning/themes", "Themes"],
   ["/learning/ideas", "Improvement ideas"],
+  ["/learning/saved", "Saved"],
 ] as const;
 
 export function LearningNav() {

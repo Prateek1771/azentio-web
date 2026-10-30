@@ -10,6 +10,7 @@ const INBOX = process.env.DEMO_INBOX ?? "hitliprateek5@gmail.com";
 const persona = (a: string) => INBOX.replace("@", `+${a}@`).toLowerCase();
 const envKey = (a: string) => `DEMO_PASSWORD_${a.replace(/-/g, "_").toUpperCase()}`;
 const TAG = `rls-test-${Date.now()}`;
+const STARTED = new Date().toISOString();
 
 type Db = ReturnType<typeof createClient>["database"];
 const results: { who: string; check: string; ok: boolean; note?: string }[] = [];
@@ -483,7 +484,138 @@ if (adm) {
   }
 }
 
+// ── Phase 7a: escalation, outbox, comments, own-row collections, attachments ──
+{
+  const a = p["acme-admin"], po = p.po, mod = p.moderator, adm = p.admin, mem = p["acme-member"];
+  const CTAG = `rlstest-${Date.now().toString(36)}`; // comment bodies: a 13-digit stamp would trip the PII scan
+  if (a) {
+    const acmeOrg = org["acme-bank"];
+    // escalation attempts by a client admin
+    await check("acme-admin", "cannot give anyone the employee role", async () =>
+      (await a.db.from("memberships").update({ role: "employee" }).eq("user_id", a.uid).eq("org_id", acmeOrg)).error ? true : "role changed");
+    await check("acme-admin", "cannot touch Azentio memberships", async () => {
+      const { data } = await a.db.from("memberships").update({ status: "revoked" }).eq("org_id", org["azentio"]).select("id");
+      return data?.length ? "revoked an employee" : true;
+    });
+    await check("acme-admin", "cannot add themselves to another org", () =>
+      failsWrite(a.db.from("memberships").insert([{ user_id: a.uid, org_id: org["borealis-finance"], role: "client_admin" }])));
+    await check("acme-admin", "cannot grant platform permissions", () =>
+      failsWrite(a.db.from("grants").insert([{ user_id: a.uid, kind: "portal_admin" }])));
+    await check("acme-admin", "cannot demote the last administrator", async () =>
+      (await a.db.from("memberships").update({ role: "client_member" }).eq("user_id", a.uid).eq("org_id", acmeOrg)).error ? true : "demoted");
+    await check("acme-admin", "cannot remove the last administrator", async () => {
+      await a.db.from("memberships").delete().eq("user_id", a.uid).eq("org_id", acmeOrg);
+      return (await admin.from("memberships").select("id").eq("user_id", a.uid).eq("org_id", acmeOrg)).data?.length ? true : "removed";
+    });
+    if (adm) {
+      await admin.from("memberships").insert([{ user_id: adm.uid, org_id: acmeOrg, role: "client_member" }]);
+      const role = async () => ((await admin.from("memberships").select("role").eq("user_id", adm.uid).eq("org_id", acmeOrg).single()).data as { role: string }).role;
+      await a.db.from("memberships").update({ role: "client_admin" }).eq("user_id", adm.uid).eq("org_id", acmeOrg);
+      await check("acme-admin", "promotes a member to administrator", async () => ((await role()) === "client_admin" ? true : "not promoted"));
+      await a.db.from("memberships").update({ role: "client_member" }).eq("user_id", adm.uid).eq("org_id", acmeOrg);
+      await check("acme-admin", "demotes them again", async () => ((await role()) === "client_member" ? true : "not demoted"));
+      await a.db.from("memberships").delete().eq("user_id", adm.uid).eq("org_id", acmeOrg);
+      await check("acme-admin", "removes a member", async () => ((await admin.from("memberships").select("id").eq("user_id", adm.uid).eq("org_id", acmeOrg)).data?.length ? "still a member" : true));
+      await admin.from("memberships").delete().eq("user_id", adm.uid).eq("org_id", acmeOrg);
+    }
+    if (mem) await check("acme-member", "cannot promote themselves", async () =>
+      ((await mem.db.from("memberships").update({ role: "client_admin" }).eq("user_id", mem.uid).select("id")).data?.length ? "promoted" : true));
+
+    // outbox: never readable or claimable by users
+    await check("acme-admin", "cannot read the outbox", () => denied(a.db.from("outbox").select("id")));
+    await check("acme-admin", "cannot claim outbox rows", async () => ((await a.db.rpc("outbox_claim", { p_limit: 1 })).error ? true : "claimed"));
+    await check("acme-admin", "outbox overview is empty for non-admins", async () => (((await a.db.rpc("outbox_overview")).data as unknown[] | null)?.length ? "visible" : true));
+
+    // comments, on a live seeded shared item and on Acme-private content
+    const { data: liveRow } = await admin.from("shared_contributions").select("id, source_id").eq("status", "live").limit(1).maybeSingle();
+    const shared = liveRow as { id: string; source_id: string } | null;
+    const { data: privRow } = await admin.from("content").select("id").eq("slug", "seed-acme-private").maybeSingle();
+    const priv = (privRow as { id: string } | null)?.id;
+    if (shared) {
+      const cm = await a.db.from("comments").insert([{ parent_type: "shared", parent_id: shared.id, body: `${CTAG} seasonal dips match ours` }]).select("id").single();
+      const cid = (cm.data as { id: string } | null)?.id;
+      await check("acme-admin", "comments on a shared item", async () => (cid ? true : `failed: ${cm.error?.message}`));
+      await check("acme-admin", "comments with contact details are rejected", () =>
+        failsWrite(a.db.from("comments").insert([{ parent_type: "shared", parent_id: shared.id, body: "call me on +44 20 7946 0958" }])));
+      if (po && cid) await check("po", "sees the comment without the author's identity", async () => {
+        const t = ((await po.db.rpc("comment_thread", { p_type: "shared", p_id: shared.id })).data ?? []) as { id: string; author_label: string }[];
+        const c = t.find((x) => x.id === cid);
+        return c?.author_label === "Community member" ? true : `label: ${c?.author_label}`;
+      });
+      if (mod && cid) {
+        await mod.db.from("comments").update({ hidden: true }).eq("id", cid);
+        await check("po", "hidden comments drop out of the thread", async () =>
+          (((await po!.db.rpc("comment_thread", { p_type: "shared", p_id: shared.id })).data ?? []) as { id: string }[]).some((x) => x.id === cid) ? "still visible" : true);
+      }
+      // bookmarks + feedback: own rows only; counts only for moderators
+      await a.db.from("bookmarks").insert([{ shared_id: shared.id }]);
+      await a.db.from("shared_feedback").insert([{ shared_id: shared.id, kind: "useful" }]);
+      if (po) {
+        await check("po", "cannot see others' bookmarks or feedback", async () =>
+          (await denied(po.db.from("bookmarks").select("shared_id").eq("user_id", a.uid))) === true && (await denied(po.db.from("shared_feedback").select("kind").eq("user_id", a.uid))) === true ? true : "LEAK");
+        await check("po", "gets no feedback totals (not author or moderator)", async () =>
+          (((await po.db.rpc("feedback_counts", { p_contribution: shared.source_id })).data as unknown[] | null)?.length ? "totals exposed" : true));
+      }
+      if (mod) await check("moderator", "sees feedback totals", async () =>
+        ((((await mod.db.rpc("feedback_counts", { p_contribution: shared.source_id })).data ?? []) as { useful: number }[])[0]?.useful ?? 0) >= 1 ? true : "missing");
+      await a.db.from("bookmarks").delete().eq("shared_id", shared.id);
+      await a.db.from("shared_feedback").delete().eq("shared_id", shared.id);
+    }
+    if (priv && po) {
+      await check("po", "cannot comment on another org's private content", () =>
+        failsWrite(po.db.from("comments").insert([{ parent_type: "content", parent_id: priv, body: `${CTAG} peeking` }])));
+      await a.db.from("comments").insert([{ parent_type: "content", parent_id: priv, body: `${CTAG} internal question` }]);
+      await check("po", "cannot read a thread on another org's private content", async () =>
+        (((await po.db.rpc("comment_thread", { p_type: "content", p_id: priv })).data as unknown[] | null)?.length ? "LEAK" : true));
+      await check("acme-admin", "acknowledges own org's content", async () =>
+        ((await a.db.from("acknowledgements").insert([{ content_id: priv }])).error ? "failed" : true));
+      await check("po", "cannot acknowledge content they can't see", () => failsWrite(po.db.from("acknowledgements").insert([{ content_id: priv }])));
+      await a.db.from("acknowledgements").delete().eq("content_id", priv);
+    }
+    await check("acme-admin", "saved searches are private", async () => {
+      await a.db.from("saved_searches").insert([{ name: `${TAG} seasonal`, query: { q: "seasonal" } }]);
+      return po ? denied(po.db.from("saved_searches").select("id").like("name", `${TAG}%`)) : true;
+    });
+
+    // attachments
+    const { data: d } = await a.db.from("contributions").insert([{
+      org_id: acmeOrg, type: "observation", title: `${TAG} attachment test`, visibility_choice: "propose_shared",
+      body: "Testing private attachments on a proposal.", evidence_type: "internal_data", confidence: "low",
+    }]).select("id").single();
+    const did = (d as { id: string }).id;
+    const att = (key: string) => ({ contribution_id: did, storage_key: key, name: "x.pdf", mime: "application/pdf", size: 10 });
+    await check("acme-admin", "attaches a file to own draft", async () => ((await a.db.from("contribution_attachments").insert([att(`${did}/a.pdf`)])).error ? "failed" : true));
+    await check("acme-admin", "cannot point an attachment at another folder", () => failsWrite(a.db.from("contribution_attachments").insert([att(`someone-else/a.pdf`)])));
+    await check("acme-admin", "cannot attach an executable", () => failsWrite(a.db.from("contribution_attachments").insert([{ ...att(`${did}/b.exe`), mime: "application/x-msdownload" }])));
+    if (mod) await check("moderator", "cannot attach to someone else's contribution", () => failsWrite(mod.db.from("contribution_attachments").insert([att(`${did}/m.pdf`)])));
+    if (po) await check("po", "cannot see another org's attachments", () => denied(po.db.from("contribution_attachments").select("id").eq("contribution_id", did)));
+    if (mod) {
+      await check("moderator", "never sees attachments on drafts", () => denied(mod.db.from("contribution_attachments").select("id").eq("contribution_id", did)));
+      await a.db.from("consents").insert([{ contribution_id: did, store: true, publish: true, attribute: false, train: false }]);
+      await a.db.from("contributions").update({ state: "submitted" }).eq("id", did);
+      await check("moderator", "sees attachments once submitted", async () => ((await rows(mod.db.from("contribution_attachments").select("id").eq("contribution_id", did)))?.length ? true : "missing"));
+      await check("acme-admin", "can't change attachments while in review", () => failsWrite(a.db.from("contribution_attachments").insert([att(`${did}/late.pdf`)])));
+      // return → exactly one outbox row for the author's email
+      await mod.db.from("contributions").update({ state: "returned", moderator_reason: "Please clarify the source." }).eq("id", did);
+      await check("db", "a moderator return queues exactly one email", async () => {
+        const { data: n } = await admin.from("notifications").select("id").eq("kind", "contribution.return").eq("payload->>contribution_id", did);
+        const nid = (n as { id: string }[] | null)?.[0]?.id;
+        const { data: o } = await admin.from("outbox").select("id").eq("idempotency_key", `notif:${nid}`);
+        return nid && o?.length === 1 ? true : `notification ${nid ? "found" : "missing"}, ${o?.length ?? 0} outbox row(s)`;
+      });
+    }
+    // test emails go nowhere: drop queued rows for this run's notifications before any worker sees them
+    const { data: notes } = await admin.from("notifications").select("id").eq("payload->>contribution_id", did);
+    for (const n of (notes ?? []) as { id: string }[]) await admin.from("outbox").delete().eq("idempotency_key", `notif:${n.id}`);
+    await admin.from("contributions").delete().eq("id", did);
+    await admin.from("comments").delete().like("body", `${CTAG}%`);
+    await admin.from("saved_searches").delete().like("name", `${TAG}%`);
+  }
+}
+
 // ── cleanup (admin key) ──────────────────────────────────────────────────
+// emails this run queued for demo personas (returns, publishes, idea updates) are test noise, never sent
+await admin.from("outbox").delete().gte("created_at", STARTED).like("to_email", INBOX.replace("@", "+%@")).in("status", ["queued", "retry"]);
 await admin.from("demo_requests").delete().eq("name", TAG);
 await admin.from("invitations").delete().like("token_hash", `${TAG}%`);
 await admin.from("content").delete().like("slug", `${TAG}%`);

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireOrg, requireUser } from "@/lib/authz";
 import { createInsForgeServerClient } from "@/lib/insforge/server";
+import { createInsForgeAdminClient } from "@/lib/insforge/admin";
 import { type Consents, contributionSchema } from "./model";
 
 export type FormState = { error?: string; fieldErrors?: Record<string, string>; values?: Record<string, string> };
@@ -92,8 +93,12 @@ export async function discardDraft(slug: string, form: FormData): Promise<void> 
   await requireOrg(slug);
   const id = z.string().uuid().safeParse(form.get("id"));
   if (!id.success) return;
-  const insforge = await createInsForgeServerClient();
-  await insforge.database.from("contributions").delete().eq("id", id.data).eq("state", "draft");
+  const db = (await createInsForgeServerClient()).database;
+  const { data: files } = await db.from("contribution_attachments").select("storage_key").eq("contribution_id", id.data);
+  const { data: gone } = await db.from("contributions").delete().eq("id", id.data).eq("state", "draft").select("id");
+  // rows cascade with the draft; the stored files go too (only if the delete actually happened)
+  const keys = ((files ?? []) as { storage_key: string }[]).map((f) => f.storage_key);
+  if (gone?.length && keys.length) await Promise.all(keys.map((k) => createInsForgeAdminClient().storage.from("attachments").remove(k)));
   revalidatePath(`/c/${slug}`, "layout");
   redirect(`/c/${slug}/observations`);
 }

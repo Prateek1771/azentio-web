@@ -56,7 +56,9 @@ export function InviteForm({ slug }: { slug: string }) {
               {copied ? "Copied" : "Copy"}
             </button>
           </div>
-          <p className="text-xs text-slate">Email delivery arrives with the notification outbox (Phase 7).</p>
+          <p className="text-xs text-slate">
+            {state.emailed ? "We've also emailed the invitation. Delivery depends on their mail provider." : "Email couldn't be queued; share the link directly."}
+          </p>
         </div>
       )}
     </div>

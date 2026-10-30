@@ -7,8 +7,8 @@ import { products } from "@/lib/content";
 import { cn } from "@/lib/utils";
 import { EmptyState, Section } from "@/components/portal/primitives";
 import { Panel, PortalBand } from "@/components/portal/portal";
-import { BannerForm, RecordingForm, StreamForm } from "./forms";
-import { deleteSession, setBannerPublished, setLive, setRecordingPublished } from "./actions";
+import { BannerForm, ClientContentForm, RecordingForm, StreamForm } from "./forms";
+import { deleteSession, setBannerPublished, setClientContentPublished, setLive, setRecordingPublished } from "./actions";
 
 export const metadata: Metadata = { title: "Publisher workspace" };
 
@@ -16,6 +16,7 @@ const TABS = [
   { key: "stream", label: "Stream settings" },
   { key: "recordings", label: "Past recordings" },
   { key: "homepage", label: "Homepage" },
+  { key: "clients", label: "Client content" },
 ] as const;
 const AUDIENCE: Record<string, string> = { employee: "Employees", public: "Public", client_entitled: "Entitled clients" };
 const offerings = products.map((p) => ({ slug: p.slug, name: p.name }));
@@ -52,6 +53,13 @@ async function Workspace({ searchParams }: { searchParams: Promise<{ tab?: strin
           <div className="grid grid-cols-[1.1fr_1fr] gap-6 max-[1100px]:grid-cols-1">
             <Panel title="Add a recording"><RecordingForm offerings={offerings} /></Panel>
             <Panel title="Recordings"><Recordings db={db} /></Panel>
+          </div>
+        )}
+        {tab === "clients" && (
+          <div className="grid grid-cols-[1.1fr_1fr] gap-6 max-[1100px]:grid-cols-1">
+            <Panel title="New briefing, release note or resource"><ClientContentForm offerings={offerings} /></Panel>
+            <Panel title="Client content"><ClientContent db={db} /></Panel>
+            <p className="text-sm text-slate">Invite-only webinars: add a session under Stream settings with the audience “Clients entitled to an offering” and a start time. It appears on those clients&rsquo; Resources page.</p>
           </div>
         )}
         {tab === "homepage" && (
@@ -129,5 +137,32 @@ export default function Page({ searchParams }: { searchParams: Promise<{ tab?: s
     <Suspense fallback={<Section><p className="text-slate">Loading…</p></Section>}>
       <Workspace searchParams={searchParams} />
     </Suspense>
+  );
+}
+
+const KIND: Record<string, string> = { briefing: "Briefing", release_note: "Release note", library: "Resource" };
+
+async function ClientContent({ db }: { db: Db }) {
+  const [{ data }, { data: acks }] = await Promise.all([
+    db.from("content").select("id, kind, title, published, offerings(name)").in("kind", ["briefing", "release_note", "library"]).order("created_at", { ascending: false }),
+    db.rpc("ack_counts"),
+  ]);
+  const rows = (data ?? []) as unknown as { id: string; kind: string; title: string; published: boolean; offerings: { name: string } | null }[];
+  const ack = new Map(((acks ?? []) as { content_id: string; acknowledged: number }[]).map((a) => [a.content_id, a.acknowledged]));
+  if (!rows.length) return <EmptyState title="No client content yet" body="Briefings and release notes reach the clients entitled to an offering." />;
+  return (
+    <ul className="grid grid-cols-1 gap-2">
+      {rows.map((r) => (
+        <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-light px-4 py-3 text-sm">
+          <span className="min-w-0">
+            <span className="font-bold">{r.title}</span>
+            <span className="block text-xs text-slate">
+              {KIND[r.kind]} · {r.offerings?.name ?? "Public"} · {r.published ? `Published · ${ack.get(r.id) ?? 0} acknowledged` : "Draft"}
+            </span>
+          </span>
+          <form action={setClientContentPublished.bind(null, r.id, !r.published)}><button className={rowBtn}>{r.published ? "Unpublish" : "Publish"}</button></form>
+        </li>
+      ))}
+    </ul>
   );
 }

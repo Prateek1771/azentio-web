@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Search } from "lucide-react";
 import { requireMember } from "@/lib/authz";
@@ -9,6 +10,7 @@ import { EmptyState, Section } from "@/components/portal/primitives";
 import { PortalBand } from "@/components/portal/portal";
 import { fieldCls } from "@/components/site/form-bits";
 import { ReportButton } from "./report-button";
+import { saveSearch } from "@/lib/learning/collab";
 
 export const metadata: Metadata = { title: "Community learning" };
 
@@ -83,9 +85,18 @@ async function Feed({ searchParams }: Props) {
           </button>
         </form>
 
-        <p className="mb-4 text-sm text-slate" role="status">
-          {count ?? 0} approved contribution{count === 1 ? "" : "s"}
-        </p>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate" role="status">
+            {count ?? 0} approved contribution{count === 1 ? "" : "s"}
+          </p>
+          {Object.values(f).some(Boolean) && (
+            <form action={saveSearch} className="flex gap-2">
+              {Object.entries(f).map(([k, v]) => v && <input key={k} type="hidden" name={k} value={v} />)}
+              <input name="name" required maxLength={80} aria-label="Name for this search" placeholder="Name this search" className={`${fieldCls} py-2 text-sm`} />
+              <button className="shrink-0 rounded-[5px] border border-line-strong px-3 text-xs font-bold hover:border-green-700">Save this search</button>
+            </form>
+          )}
+        </div>
         {rows.length ? (
           <ul className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
             {rows.map((s) => (
@@ -94,7 +105,9 @@ async function Feed({ searchParams }: Props) {
                   <p className="text-[11px] font-extrabold tracking-[2px] text-green-700 uppercase">
                     {TYPES[s.type as keyof typeof TYPES]}{s.offering_id && ` · ${name.get(s.offering_id)}`}
                   </p>
-                  <h2 className="text-[18px] leading-snug font-bold">{s.title}</h2>
+                  <h2 className="text-[18px] leading-snug font-bold">
+                    <Link href={`/learning/${s.id}`} className="hover:text-green-700 hover:underline">{s.title}</Link>
+                  </h2>
                   <p className="text-sm leading-[1.7] whitespace-pre-wrap text-ink">{s.body}</p>
                   <p className="text-xs text-slate">
                     {[s.industry, s.region, period(s.period_start, s.period_end)].filter(Boolean).join(" · ")}

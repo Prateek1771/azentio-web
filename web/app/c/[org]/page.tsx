@@ -45,6 +45,9 @@ async function ClientHome({ params }: { params: Promise<{ org: string }> }) {
         <Link href="/learning" className="rounded-[5px] border border-white/40 px-5 py-3 text-sm font-bold hover:border-green hover:text-green">
           Community learning
         </Link>
+        <Link href={`/c/${org.slug}/resources`} className="rounded-[5px] border border-white/40 px-5 py-3 text-sm font-bold hover:border-green hover:text-green">
+          Resources
+        </Link>
         {isAdmin && (
           <Link href={`/c/${org.slug}/members`} className="rounded-[5px] border border-white/40 px-5 py-3 text-sm font-bold hover:border-green hover:text-green">
             Members &amp; invitations

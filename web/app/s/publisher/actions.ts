@@ -155,3 +155,33 @@ export async function setBannerPublished(id: string, published: boolean) {
   await db.from("content").update({ published }).eq("id", id).eq("kind", "banner");
   refresh();
 }
+
+// Client briefings, release notes and resources: entitled clients of one offering (employees see them too).
+const clientContentSchema = z.object({
+  kind: z.enum(["briefing", "release_note", "library"]),
+  offering: z.string().min(1, "Choose the offering whose clients should see it."),
+  title: z.string().trim().min(2, "Give it a title.").max(200),
+  body: z.string().trim().min(10, "Write at least a few words.").max(10000),
+});
+
+export async function createClientContent(_: ActionState, form: FormData): Promise<ActionState> {
+  await requireGrant("publish_media");
+  const p = clientContentSchema.safeParse(Object.fromEntries(form));
+  if (!p.success) return { error: p.error.issues[0].message };
+  const offering_id = await offeringId(p.data.offering);
+  if (!offering_id) return { error: "Choose the offering whose clients should see it." };
+  const { error } = await (await createInsForgeServerClient()).database.from("content").insert([{
+    kind: p.data.kind, audience: "client_entitled", offering_id, title: p.data.title, body: p.data.body, published: false,
+  }]);
+  if (error) return { error: "Couldn't save it." };
+  revalidatePath("/s/publisher");
+  return { ok: "Saved as a draft. Publish it when it's ready." };
+}
+
+export async function setClientContentPublished(id: string, published: boolean) {
+  await requireGrant("publish_media");
+  if (!idSchema.safeParse(id).success) return;
+  await (await createInsForgeServerClient()).database.from("content").update({ published }).eq("id", id).in("kind", ["briefing", "release_note", "library"]);
+  revalidatePath("/s/publisher");
+  revalidatePath("/c", "layout");
+}

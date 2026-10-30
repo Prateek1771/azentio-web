@@ -6,7 +6,7 @@ import { createInsForgeServerClient } from "@/lib/insforge/server";
 import { EmptyState, Section } from "@/components/portal/primitives";
 import { Panel, PortalBand, roleLabel } from "@/components/portal/portal";
 import { InviteForm } from "./invite-form";
-import { revokeInvite } from "./actions";
+import { manageMember, revokeInvite } from "./actions";
 
 export const metadata: Metadata = { title: "Members & invitations" };
 
@@ -16,7 +16,7 @@ type Invite = { id: string; email: string; role: string; expires_at: string; use
 const inviteStatus = (i: Invite) =>
   i.used_at ? "accepted" : i.revoked_at ? "revoked" : new Date(i.expires_at) < new Date() ? "expired" : "pending";
 
-async function Members({ params }: { params: Promise<{ org: string }> }) {
+async function Members({ params, searchParams }: { params: Promise<{ org: string }>; searchParams: Promise<{ error?: string }> }) {
   const { org, session } = await requireOrg((await params).org);
   if (org.role !== "client_admin") forbidden();
   const insforge = await createInsForgeServerClient();
@@ -32,6 +32,7 @@ async function Members({ params }: { params: Promise<{ org: string }> }) {
       <PortalBand eyebrow={`${org.name} · Administration`} title="Members & invitations" lead="Invite people into your organisation only. Client roles only: platform roles can never be granted from here." />
       <Section className="py-14">
         <div className="grid gap-6">
+          {(await searchParams).error && <p role="alert" className="rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">{(await searchParams).error}</p>}
           <Panel title="Invite someone">
             <InviteForm slug={org.slug} />
           </Panel>
@@ -39,9 +40,22 @@ async function Members({ params }: { params: Promise<{ org: string }> }) {
             <Panel title={`Members (${ms.length})`}>
               <ul className="grid grid-cols-1 gap-2">
                 {ms.map((m) => (
-                  <li key={m.user_id} className="flex items-center justify-between rounded-lg bg-light px-4 py-3 text-sm">
-                    <span className="font-bold">{m.email}{m.user_id === session.user.id && " (you)"}</span>
-                    <span className="text-xs font-bold tracking-wide text-green-700 uppercase">{roleLabel(m.role)} · {m.status}</span>
+                  <li key={m.user_id} className="grid gap-2 rounded-lg bg-light px-4 py-3 text-sm">
+                    <span className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="min-w-0 break-all font-bold">{m.email}{m.user_id === session.user.id && " (you)"}</span>
+                      <span className="text-xs font-bold tracking-wide text-green-700 uppercase">{roleLabel(m.role)} · {m.status}</span>
+                    </span>
+                    {m.status === "active" && (
+                      <form action={manageMember.bind(null, org.slug)} className="flex flex-wrap gap-2">
+                        <input type="hidden" name="user" value={m.user_id} />
+                        <button name="op" value={m.role === "client_admin" ? "member" : "admin"} className="rounded-[5px] border border-line-strong bg-white px-3 py-1.5 text-xs font-bold hover:border-green-700">
+                          {m.role === "client_admin" ? "Make member" : "Make administrator"}
+                        </button>
+                        <button name="op" value="remove" className="rounded-[5px] border border-orange-300 bg-white px-3 py-1.5 text-xs font-bold text-orange-800 hover:bg-orange-50">
+                          Remove
+                        </button>
+                      </form>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -78,10 +92,10 @@ async function Members({ params }: { params: Promise<{ org: string }> }) {
   );
 }
 
-export default function Page({ params }: { params: Promise<{ org: string }> }) {
+export default function Page(props: { params: Promise<{ org: string }>; searchParams: Promise<{ error?: string }> }) {
   return (
     <Suspense fallback={<Section><p className="text-slate">Loading…</p></Section>}>
-      <Members params={params} />
+      <Members {...props} />
     </Suspense>
   );
 }

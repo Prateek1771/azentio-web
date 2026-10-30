@@ -9,8 +9,9 @@ import { CONFIDENCE, CONSENTS, type Consents, EVIDENCE, NOTIFY, TYPES, VISIBILIT
 import { piiLabel } from "@/lib/contributions/pii";
 import { Section } from "@/components/portal/primitives";
 import { Panel, PortalBand } from "@/components/portal/portal";
-import { StateBadge } from "@/components/portal/contributions";
+import { FeedbackTally, StateBadge } from "@/components/portal/contributions";
 import { loadContribution } from "../queries";
+import { Attachments } from "./attachments";
 
 export const metadata: Metadata = { title: "Observation" };
 
@@ -34,7 +35,7 @@ async function Detail({ params, searchParams }: Props) {
   const { org, session } = await requireOrg(p.org);
   const found = await loadContribution(p.id, org.org_id);
   if (!found) notFound();
-  const { c, consents, versions, events } = found;
+  const { c, consents, versions, events, attachments } = found;
   const error = (await searchParams).error;
   const mine = c.author_id === session.user.id;
   const base = `/c/${org.slug}/observations`;
@@ -102,6 +103,10 @@ async function Detail({ params, searchParams }: Props) {
               </div>
             )}
 
+            <Panel title="Attachments">
+              <Attachments slug={org.slug} contributionId={c.id} items={attachments} editable={mine && ["draft", "returned"].includes(s)} />
+            </Panel>
+
             {versions.length > 0 && (
               <Panel title="Earlier versions">
                 <ul className="grid grid-cols-1 gap-3">
@@ -122,6 +127,7 @@ async function Detail({ params, searchParams }: Props) {
           </div>
 
           <div className="grid content-start gap-6">
+            {mine && ["published", "unpublished"].includes(s) && <FeedbackTally contribution={c.id} />}
             <section aria-labelledby="who" className="rounded-[10px] border-2 border-green-700 bg-green-050 p-6">
               <h2 id="who" className="flex items-center gap-2 text-[17px] font-bold">
                 <Eye className="size-4 text-green-700" aria-hidden /> Who can see this version

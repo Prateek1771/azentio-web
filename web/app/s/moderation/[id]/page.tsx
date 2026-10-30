@@ -9,7 +9,7 @@ import { CONFIDENCE, type Consents, type Contribution, EVIDENCE, TYPES } from "@
 import { piiLabel } from "@/lib/contributions/pii";
 import { Section } from "@/components/portal/primitives";
 import { Panel, PortalBand } from "@/components/portal/portal";
-import { StateBadge } from "@/components/portal/contributions";
+import { FeedbackTally, StateBadge } from "@/components/portal/contributions";
 import { ModerationActions, SharedCopyForm } from "./panel";
 
 export const metadata: Metadata = { title: "Review contribution" };
@@ -21,10 +21,11 @@ async function Review({ params, searchParams }: Props) {
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = (await createInsForgeServerClient()).database;
-  const [{ data }, { data: consentRows }, { data: versions }] = await Promise.all([
+  const [{ data }, { data: consentRows }, { data: versions }, { data: files }] = await Promise.all([
     db.from("contributions").select("*, offerings(name)").eq("id", id).maybeSingle(),
     db.from("consents").select("store, publish, attribute, train").eq("contribution_id", id).order("id", { ascending: false }).limit(1),
     db.from("contribution_versions").select("version, created_at").eq("contribution_id", id).order("version", { ascending: false }),
+    db.from("contribution_attachments").select("id, name").eq("contribution_id", id).order("at"),
   ]);
   if (!data) notFound(); // RLS: drafts, private and org-only items don't exist for moderators
   const c = data as Contribution & { offerings: { name: string } | null };
@@ -68,6 +69,16 @@ async function Review({ params, searchParams }: Props) {
               ))}
             </dl>
             {c.moderator_reason && <p className="mt-4 text-sm text-slate">Last reason given: “{c.moderator_reason}”</p>}
+            {!!files?.length && (
+              <div className="mt-4 border-t border-line pt-4 text-sm">
+                <p className="text-xs font-bold text-slate">Attachments (private; never part of the shared copy)</p>
+                <ul className="mt-1.5 grid grid-cols-1 gap-1">
+                  {(files as { id: string; name: string }[]).map((f) => (
+                    <li key={f.id} className="min-w-0 truncate"><a href={`/api/attachments/${f.id}`} className="font-bold text-green-700 hover:underline">{f.name}</a></li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </Panel>
 
           <div className="grid content-start gap-6">
@@ -80,6 +91,7 @@ async function Review({ params, searchParams }: Props) {
                 />
               </Panel>
             )}
+            {["published", "unpublished"].includes(c.state) && <FeedbackTally contribution={c.id} />}
             <Panel title="Decision">
               <ModerationActions id={c.id} state={c.state} />
             </Panel>
