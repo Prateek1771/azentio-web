@@ -37,7 +37,7 @@ async function Members({ params }: { params: Promise<{ org: string }> }) {
           </Panel>
           <div className="grid grid-cols-2 gap-6 max-md:grid-cols-1">
             <Panel title={`Members (${ms.length})`}>
-              <ul className="grid gap-2">
+              <ul className="grid grid-cols-1 gap-2">
                 {ms.map((m) => (
                   <li key={m.user_id} className="flex items-center justify-between rounded-lg bg-light px-4 py-3 text-sm">
                     <span className="font-bold">{m.email}{m.user_id === session.user.id && " (you)"}</span>
@@ -48,7 +48,7 @@ async function Members({ params }: { params: Promise<{ org: string }> }) {
             </Panel>
             <Panel title="Invitations">
               {inv.length ? (
-                <ul className="grid gap-2">
+                <ul className="grid grid-cols-1 gap-2">
                   {inv.map((i) => {
                     const st = inviteStatus(i);
                     return (

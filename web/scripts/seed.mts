@@ -128,6 +128,54 @@ await upsert(
   "key",
 );
 
+// The brief's SME-seasonality scenario as published shared learning (fictional). Authored by the portal
+// admin persona as a synthetic system author; skipped until that account exists, and only seeded once.
+{
+  const { data: author } = await db.from("profiles").select("user_id").eq("email", persona("admin")).maybeSingle();
+  const { data: done } = await db.from("themes").select("id").eq("name", "Seasonality context").maybeSingle();
+  if (!author) console.log("· seasonality scenario skipped (portal admin account not created yet)");
+  else if (done) console.log("· seasonality scenario already seeded");
+  else {
+    const fa = off["financial-analysis"];
+    const items = [
+      ["acme-bank", "Seasonal SME inflows misread as distress", "Retail-trade SMEs show sharp Q4 inflow peaks and Q1 troughs. Peer comparisons that ignore the cycle flag healthy firms as deteriorating in Q1.", "Retail banking", "Middle East"],
+      ["borealis-finance", "Agricultural borrowers penalised outside harvest months", "Cash-flow ratios for agri SMEs look weak for most of the year and recover at harvest. Annualised views would treat them more consistently.", "SME lending", "Europe"],
+      ["cedar-credit", "Tourism SMEs: off-season dips trigger manual reviews", "Members in tourism regions see predictable off-season revenue dips. Analysts ask for seasonality-aware comparisons before referring cases.", "Credit union", "South Asia"],
+    ] as const;
+    const shared: string[] = [];
+    for (const [o, title, body, industry, region] of items) {
+      const { data: c, error } = await db.from("contributions").insert([{
+        org_id: org[o], author_id: (author as { user_id: string }).user_id, type: "observation", title, body, offering_id: fa,
+        industry, region, period_start: "2025-01-01", period_end: "2025-12-31", evidence_type: "client_feedback", confidence: "med",
+        visibility_choice: "propose_shared", state: "published",
+      }]).select("id").single();
+      if (error) throw new Error(`contributions: ${error.message}`);
+      const { data: s, error: se } = await db.from("shared_contributions").insert([{
+        source_id: (c as { id: string }).id, title, body, type: "observation", offering_id: fa, industry, region,
+        period_start: "2025-01-01", period_end: "2025-12-31",
+      }]).select("id").single();
+      if (se) throw new Error(`shared_contributions: ${se.message}`);
+      shared.push((s as { id: string }).id);
+      await db.from("shared_org_link").insert([{ shared_id: (s as { id: string }).id, org_id: org[o] }]);
+    }
+    const { data: t } = await db.from("themes").insert([{
+      name: "Seasonality context", status: "confirmed", confidence: "med", offering_ids: [fa],
+      summary: "SME cash flow follows predictable seasonal cycles that point-in-time comparisons treat as deterioration.",
+      limitations: "Three contributions from three organisations; self-selected and qualitative. An early signal, not market prevalence.",
+    }]).select("id").single();
+    await db.from("theme_links").insert(shared.map((shared_id) => ({ theme_id: (t as { id: string }).id, shared_id })));
+    const { data: i } = await db.from("ideas").insert([{
+      title: "Seasonality-aware comparison explanation", offering_id: fa, theme_id: (t as { id: string }).id,
+      problem: "Financial Analysis compares SMEs against peers without adjusting for seasonal cycles.",
+      proposed_outcome: "Explain when a ratio change is within the borrower's usual seasonal range.",
+      owner_team: "Financial Analysis product team", priority: "high", status: "under_review", client_visible: true,
+      public_update: "We're assessing how to explain seasonal patterns in peer comparisons. No delivery date yet.",
+    }]).select("id").single();
+    await db.from("idea_evidence").insert(shared.map((shared_id) => ({ idea_id: (i as { id: string }).id, shared_id })));
+    console.log("✓ seasonality scenario     3 shared + theme + idea");
+  }
+}
+
 console.log("\nPersonas (sign in with OTP; access binds automatically):");
 for (const [a] of staff) console.log(`  staff   ${persona(a)}`);
 for (const s of ["acme", "borealis", "cedar"]) console.log(`  client  ${persona(`${s}-admin`)}  ${persona(`${s}-member`)}`);

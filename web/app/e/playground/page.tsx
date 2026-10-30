@@ -35,7 +35,7 @@ async function Playground() {
           </div>
           <Panel title="Your recent runs">
             {runs.length ? (
-              <ul className="grid gap-2">
+              <ul className="grid grid-cols-1 gap-2">
                 {runs.map((r) => (
                   <li key={r.id}>
                     <Link href={`/e/playground/${r.offerings.slug}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-light px-4 py-3 text-sm hover:bg-green-050">

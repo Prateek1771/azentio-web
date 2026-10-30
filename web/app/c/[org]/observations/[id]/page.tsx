@@ -104,7 +104,7 @@ async function Detail({ params, searchParams }: Props) {
 
             {versions.length > 0 && (
               <Panel title="Earlier versions">
-                <ul className="grid gap-3">
+                <ul className="grid grid-cols-1 gap-3">
                   {versions.map((v) => (
                     <li key={v.version} className="rounded-lg bg-light px-4 py-3 text-sm">
                       <details>
@@ -133,7 +133,7 @@ async function Detail({ params, searchParams }: Props) {
             {mine && (
               <Panel title="Consents">
                 {consents.length ? (
-                  <ul className="grid gap-3 text-sm">
+                  <ul className="grid grid-cols-1 gap-3 text-sm">
                     {consents.map((k, i) => (
                       <li key={k.at + i} className={i ? "border-t border-line pt-3 text-slate" : ""}>
                         <p className="text-xs font-bold">{i ? "Earlier" : "Current"} · {when(k.at)}</p>

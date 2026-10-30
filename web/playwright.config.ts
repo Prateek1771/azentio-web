@@ -3,6 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
+  // The dev server compiles routes on first hit; more than two workers starves it. Production runs use the default.
+  workers: process.env.PW_PROD ? undefined : 2,
   retries: process.env.CI ? 2 : 0,
   // Multi-login flows against a dev server that compiles routes on first hit; defaults (30s / 5s) are too tight.
   timeout: 60_000,

@@ -67,8 +67,9 @@ export function Tile({
 }
 
 export function Panel({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+  // min-w-0: panels sit in grid tracks; without it a truncated (nowrap) child widens the track.
   return (
-    <div className="rounded-[10px] border border-line bg-white p-7">
+    <div className="min-w-0 rounded-[10px] border border-line bg-white p-7">
       <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="text-[19px] font-bold">{title}</h2>
         {action}

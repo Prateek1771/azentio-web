@@ -129,4 +129,7 @@ export const NOTIFY: Record<string, string> = {
   "contribution.restore": "Restored to the community",
   "contribution.withdraw": "Withdrawn",
   "review.pending": "New contribution awaiting review",
+  "report.open": "A shared contribution was reported",
+  "report.decided": "Your report has been decided",
+  "idea.update": "An improvement idea you contributed to was updated",
 };

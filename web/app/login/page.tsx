@@ -28,7 +28,7 @@ export default function LoginPage() {
                 organisation, your role and your entitlements, and it&rsquo;s enforced on the server.
               </p>
             </div>
-            <ul className="grid gap-3 text-sm text-on-dark-muted">
+            <ul className="grid grid-cols-1 gap-3 text-sm text-on-dark-muted">
               <li>• Passwordless: a one-time code to your work email</li>
               <li>• Joining a workspace never means consenting to share or train on your data</li>
               <li>• Every privileged action is audited</li>

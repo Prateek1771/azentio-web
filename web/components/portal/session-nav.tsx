@@ -35,7 +35,13 @@ export async function SessionNav() {
       kind: n.kind,
       title: n.payload.title,
       unread: !n.read_at,
-      href: slug && n.payload.contribution_id ? `/c/${slug}/observations/${n.payload.contribution_id}` : isStaff(s) ? "/s" : "/account",
+      href:
+        n.kind === "review.pending" ? `/s/moderation/${n.payload.contribution_id}`
+        : n.kind === "report.open" ? "/s/reports"
+        : n.kind === "idea.update" ? "/learning/ideas"
+        : n.kind === "report.decided" ? "/learning"
+        : slug && n.payload.contribution_id ? `/c/${slug}/observations/${n.payload.contribution_id}`
+        : isStaff(s) ? "/s" : "/account",
     };
   });
   return (

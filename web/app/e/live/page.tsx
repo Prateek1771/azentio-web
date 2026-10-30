@@ -46,7 +46,7 @@ async function Live() {
           </Panel>
           {upcoming.length > 0 && (
             <Panel title="Scheduled sessions">
-              <ul className="grid gap-2">
+              <ul className="grid grid-cols-1 gap-2">
                 {upcoming.map((x) => (
                   <li key={x.id} className="flex items-center justify-between rounded-lg bg-light px-4 py-3 text-sm">
                     <span className="font-bold">{x.title}</span>

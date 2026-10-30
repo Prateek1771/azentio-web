@@ -21,7 +21,7 @@ async function EmployeeHome() {
           <Tile title="Playground" body="Guided product workflows on synthetic scenarios. Every output is labelled simulated." href="/e/playground" />
           <Tile title="Internal Live" body="Employee-only broadcasts and past recordings." href="/e/live" />
           <Tile title="Experiments" body="Submit and follow internal experiments and hackathon team spaces." badge="Phase 7" />
-          <Tile title="Shared learning" body="Approved, de-identified market observations and themes." badge="Phase 6" />
+          <Tile title="Shared learning" body="Approved, de-identified market observations, themes and improvement ideas." href="/learning" />
           <Tile
             title="Improvement ideas"
             body={s.grants.includes("product_owner") ? "Ideas you own, linked to permitted evidence." : "Ideas and their status across offerings."}

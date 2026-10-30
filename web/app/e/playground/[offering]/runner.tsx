@@ -158,7 +158,7 @@ export function Runner({ offering, flow, scenarios, org }: { offering: string; f
 
             <section aria-label="Evidence">
               <h3 className="mb-3 text-sm font-bold">Evidence</h3>
-              <ul className="grid gap-2">
+              <ul className="grid grid-cols-1 gap-2">
                 {out.evidence.map((e: Evidence, i) => {
                   const st = STATUS[e.status];
                   return (

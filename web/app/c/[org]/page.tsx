@@ -42,6 +42,9 @@ async function ClientHome({ params }: { params: Promise<{ org: string }> }) {
         <Link href={`${obs}/new`} className="inline-flex items-center gap-2 rounded-[5px] bg-green px-5 py-3 text-sm font-bold text-on-green">
           <Plus className="size-4" aria-hidden /> New observation
         </Link>
+        <Link href="/learning" className="rounded-[5px] border border-white/40 px-5 py-3 text-sm font-bold hover:border-green hover:text-green">
+          Community learning
+        </Link>
         {isAdmin && (
           <Link href={`/c/${org.slug}/members`} className="rounded-[5px] border border-white/40 px-5 py-3 text-sm font-bold hover:border-green hover:text-green">
             Members &amp; invitations
@@ -85,7 +88,7 @@ async function ClientHome({ params }: { params: Promise<{ org: string }> }) {
             </Panel>
             <Panel title="Recent updates">
               {notes?.length ? (
-                <ul className="grid gap-2">
+                <ul className="grid grid-cols-1 gap-2">
                   {(notes as Note[]).map((n) => (
                     <li key={n.id}>
                       <Link href={n.payload.contribution_id ? `${obs}/${n.payload.contribution_id}` : obs} className="block rounded-lg bg-light px-4 py-3 text-sm hover:bg-green-050">

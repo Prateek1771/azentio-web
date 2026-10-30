@@ -354,6 +354,135 @@ if (adm) {
   await admin.from("playground_runs").delete().eq("scenario_key", "rls-test");
 }
 
+// ── Phase 6: moderation, shared copies, reports, themes, ideas ───────────
+{
+  const a = p["acme-admin"], po = p.po, mod = p.moderator, pub = p.publisher;
+  const state = async (id: string) => ((await admin.from("contributions").select("state").eq("id", id).single()).data as { state: string }).state;
+  const sharedOf = async (id: string) => (await admin.from("shared_contributions").select("id, status").eq("source_id", id).maybeSingle()).data as { id: string; status: string } | null;
+  if (a && mod) {
+    const { data: c } = await a.db.from("contributions").insert([{
+      org_id: org["acme-bank"], type: "observation", title: `${TAG} Q1 dip at Acme Bank`, visibility_choice: "propose_shared",
+      body: "Our SME clients at Acme Bank show a Q1 inflow dip every year that peers misread.", evidence_type: "client_feedback", confidence: "med",
+    }]).select("id").single();
+    const id = (c as { id: string }).id;
+    await a.db.from("consents").insert([{ contribution_id: id, store: true, publish: true, attribute: false, train: false }]);
+    await a.db.from("contributions").update({ state: "submitted" }).eq("id", id);
+
+    await check("moderator", "cannot publish by raw update (no reviewed copy)", async () => {
+      await mod.db.from("contributions").update({ state: "published" }).eq("id", id);
+      return (await state(id)) === "submitted" ? true : "published without a shared copy";
+    });
+    if (po) await check("po", "cannot publish (no moderate grant)", async () =>
+      (await po.db.rpc("moderate_publish", { p_id: id, p_title: "x title", p_body: "x".repeat(30), p_industry: "", p_region: "" })).error ? true : "published");
+    const pubRes = await mod.db.rpc("moderate_publish", {
+      p_id: id, p_title: `${TAG} Q1 inflow dip misread by peers`, p_body: "SME clients show a recurring Q1 inflow dip that peer comparisons misread.",
+      p_industry: "Retail banking", p_region: "",
+    });
+    const sid = pubRes.data as string | null;
+    await check("moderator", "publishes a redacted shared copy", async () => (sid && (await state(id)) === "published" ? true : `rpc: ${pubRes.error?.message}`));
+    if (sid) {
+      await check("acme-admin", "shared copy holds reviewed fields only", async () => {
+        const r = ((await rows(a.db.from("shared_contributions").select("title, body, attributed_org_name").eq("id", sid))) ?? [])[0] as { title: string; body: string; attributed_org_name: string | null } | undefined;
+        if (!r) return "missing";
+        return !r.title.includes("Acme") && !r.body.includes("Acme") && r.attributed_org_name === null ? true : "identifying data leaked";
+      });
+      await check("acme-admin", "cannot read source_id / select * on shared copies", async () =>
+        (await a.db.from("shared_contributions").select("source_id").eq("id", sid)).error && (await a.db.from("shared_contributions").select("*").eq("id", sid)).error ? true : "source reachable");
+      await check("db", "shared table has no tenant or author columns", async () => {
+        const { data } = await admin.from("shared_contributions").select("*").eq("id", sid).single();
+        return ["org_id", "author_id", "moderator_reason", "pii_flags"].some((k) => k in (data as object)) ? "tenant column present" : true;
+      });
+      if (po) {
+        await check("po", "sees the shared copy", async () => ((await rows(po.db.from("shared_contributions").select("id").eq("id", sid)))?.length ? true : "missing"));
+        await check("po", "still cannot see the source", () => denied(po.db.from("contributions").select("id").eq("id", id)));
+      }
+
+      const rep = await a.db.from("reports").insert([{ shared_id: sid, reason: `${TAG} test report` }]).select("id").single();
+      const rid = (rep.data as { id: string } | null)?.id;
+      await check("acme-admin", "reports a shared copy", async () => (rid ? true : `report failed: ${rep.error?.message}`));
+      await check("acme-admin", "cannot file a duplicate open report", () => failsWrite(a.db.from("reports").insert([{ shared_id: sid, reason: `${TAG} again` }])));
+      await check("acme-admin", "cannot decide own report", async () => {
+        await a.db.from("reports").update({ status: "dismissed" }).eq("id", rid!);
+        return ((await admin.from("reports").select("status").eq("id", rid!).single()).data as { status: string }).status === "open" ? true : "decided";
+      });
+      if (po) await check("po", "cannot read others' reports", () => denied(po.db.from("reports").select("id").eq("id", rid!)));
+      await check("moderator", "sees the report and was notified", async () =>
+        (await rows(mod.db.from("reports").select("id").eq("id", rid!)))?.length && (await rows(mod.db.from("notifications").select("id").eq("kind", "report.open").eq("payload->>report_id", rid!)))?.length ? true : "missing");
+      await mod.db.from("contributions").update({ state: "unpublished" }).eq("id", id);
+      await check("acme-admin", "unpublished copy disappears from the feed", () => denied(a.db.from("shared_contributions").select("id").eq("id", sid)));
+      await check("moderator", "still sees the hidden copy", async () => ((await rows(mod.db.from("shared_contributions").select("id").eq("id", sid)))?.length ? true : "missing"));
+      await mod.db.from("reports").update({ status: "dismissed", decision_note: "Not identifying" }).eq("id", rid!);
+      await mod.db.from("contributions").update({ state: "published" }).eq("id", id);
+      await check("moderator", "dismiss + restore puts it back", async () => ((await sharedOf(id))?.status === "live" ? true : "not live"));
+      await check("acme-admin", "notified of the report decision", async () =>
+        ((await rows(a.db.from("notifications").select("id").eq("kind", "report.decided").eq("payload->>report_id", rid!)))?.length ? true : "no notification"));
+
+      // themes: k-anonymous counts, one org counts once
+      const { data: seeded } = await admin.from("themes").select("id").eq("name", "Seasonality context").maybeSingle();
+      const stat = async (db: Db, theme: string) => (((await db.rpc("theme_stats")).data ?? []) as { theme_id: string; evidence_count: number; org_count: number | null }[]).find((s) => s.theme_id === theme);
+      if (seeded) {
+        const tid = (seeded as { id: string }).id;
+        await check("acme-admin", "seeded theme shows 3 organisations", async () => ((await stat(a.db, tid))?.org_count === 3 ? true : `got ${(await stat(a.db, tid))?.org_count}`));
+        if (po) {
+          await po.db.from("theme_links").insert([{ theme_id: tid, shared_id: sid }]);
+          await check("po", "a second post from one org counts once", async () => {
+            const s = await stat(po.db, tid);
+            return s?.evidence_count === 4 && s.org_count === 3 ? true : `evidence ${s?.evidence_count}, orgs ${s?.org_count}`;
+          });
+          await po.db.from("theme_links").delete().eq("theme_id", tid).eq("shared_id", sid);
+        }
+      }
+      if (po) {
+        const { data: th } = await po.db.from("themes").insert([{ name: `${TAG} draft theme`, summary: "A draft theme for testing.", status: "draft" }]).select("id").single();
+        const tid = (th as { id: string } | null)?.id;
+        await check("po", "creates a theme", async () => (tid ? true : "insert failed"));
+        if (tid) {
+          await po.db.from("theme_links").insert([{ theme_id: tid, shared_id: sid }]);
+          await check("po", "one org is suppressed (below k=3)", async () => ((await stat(po.db, tid))?.org_count === null ? true : "count exposed"));
+          await check("acme-admin", "cannot see draft themes", () => denied(a.db.from("themes").select("id").eq("id", tid)));
+        }
+        await check("acme-admin", "cannot create themes", () => failsWrite(a.db.from("themes").insert([{ name: `${TAG} client theme`, summary: "Should not be allowed." }])));
+
+        // ideas
+        const { data: idea } = await po.db.from("ideas").insert([{ title: `${TAG} idea`, problem: "Internal problem statement.", priority: "high", status: "proposed" }]).select("id").single();
+        const iid = (idea as { id: string } | null)?.id;
+        await check("po", "creates an idea", async () => (iid ? true : "insert failed"));
+        if (pub) await check("publisher", "cannot create ideas (no product_owner)", () => failsWrite(pub.db.from("ideas").insert([{ title: `${TAG} pub idea`, problem: "Should not be allowed." }])));
+        await check("acme-admin", "cannot create ideas", () => failsWrite(a.db.from("ideas").insert([{ title: `${TAG} client idea`, problem: "Should not be allowed." }])));
+        if (iid) {
+          await po.db.from("idea_evidence").insert([{ idea_id: iid, shared_id: sid }]);
+          const mine = async () => (((await a.db.rpc("client_ideas")).data ?? []) as Record<string, unknown>[]).find((r) => r.id === iid);
+          await check("acme-admin", "cannot read the ideas table", () => denied(a.db.from("ideas").select("id").eq("id", iid)));
+          await check("acme-admin", "internal ideas are hidden", async () => (!(await mine()) ? true : "visible"));
+          await po.db.from("ideas").update({ client_visible: true, status: "under_review", public_update: "Assessing seasonal comparisons." }).eq("id", iid);
+          await check("acme-admin", "sees a client-visible idea without internal fields", async () => {
+            const r = await mine();
+            return r && !("priority" in r) && !("problem" in r) && r.status === "under_review" ? true : `got ${JSON.stringify(r)}`;
+          });
+          await check("po", "status changes are recorded", async () => ((await rows(po.db.from("idea_status_history").select("id").eq("idea_id", iid)))?.length === 2 ? true : "history missing"));
+          await check("po", "status history is append-only", async () => ((await po.db.from("idea_status_history").delete().eq("idea_id", iid)).error ? true : (await rows(po.db.from("idea_status_history").select("id").eq("idea_id", iid)))?.length === 2 || "deleted"));
+          await check("acme-admin", "contributor notified of the idea update", async () =>
+            ((await rows(a.db.from("notifications").select("payload").eq("kind", "idea.update").eq("payload->>idea_id", iid)))?.length ? true : "no notification"));
+        }
+
+        // withdraw → purged from feed, themes and idea evidence immediately
+        await a.db.from("contributions").update({ state: "withdrawn" }).eq("id", id);
+        await check("acme-admin", "withdraw purges the shared copy, theme links and idea evidence", async () => {
+          const gone = !(await sharedOf(id));
+          const links = (await admin.from("theme_links").select("theme_id").eq("shared_id", sid)).data?.length ?? 0;
+          const ev = (await admin.from("idea_evidence").select("idea_id").eq("shared_id", sid)).data?.length ?? 0;
+          return gone && !links && !ev ? true : `shared ${gone ? "gone" : "present"}, ${links} theme link(s), ${ev} evidence`;
+        });
+        await admin.from("ideas").delete().like("title", `${TAG}%`);
+        await admin.from("themes").delete().like("name", `${TAG}%`);
+      }
+    }
+    await admin.from("reports").delete().like("reason", `${TAG}%`);
+    await admin.from("notifications").delete().eq("kind", "idea.update").like("payload->>title", `${TAG}%`);
+    await admin.from("contributions").delete().eq("id", id);
+  }
+}
+
 // ── cleanup (admin key) ──────────────────────────────────────────────────
 await admin.from("demo_requests").delete().eq("name", TAG);
 await admin.from("invitations").delete().like("token_hash", `${TAG}%`);

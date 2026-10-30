@@ -42,7 +42,7 @@ export function CapabilityCard({ c }: { c: Capability }) {
         >
           <span className="eyebrow">{c.title}</span>
           <strong className="text-lg leading-tight">{c.back}</strong>
-          <ul className="grid gap-2 text-[13px] text-on-dark-muted">
+          <ul className="grid grid-cols-1 gap-2 text-[13px] text-on-dark-muted">
             {c.points.map((p) => (
               <li key={p} className="flex gap-2">
                 <Check className="mt-0.5 size-3.5 shrink-0 text-green" aria-hidden />

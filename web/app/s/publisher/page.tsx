@@ -72,7 +72,7 @@ async function Sessions({ db }: { db: Db }) {
   const rows = (data ?? []) as { id: string; title: string; audience: string; is_live: boolean }[];
   if (!rows.length) return <EmptyState title="No sessions yet" body="Create one to show it on Live." />;
   return (
-    <ul className="grid gap-2">
+    <ul className="grid grid-cols-1 gap-2">
       {rows.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-light px-4 py-3 text-sm">
           <span className="min-w-0">
@@ -94,7 +94,7 @@ async function Recordings({ db }: { db: Db }) {
   const rows = (data ?? []) as { id: string; title: string; audience: string; published: boolean; storage_key: string | null }[];
   if (!rows.length) return <EmptyState title="No recordings yet" body="Add a link or upload a file." />;
   return (
-    <ul className="grid gap-2">
+    <ul className="grid grid-cols-1 gap-2">
       {rows.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-light px-4 py-3 text-sm">
           <span className="min-w-0">
@@ -113,7 +113,7 @@ async function Banners({ db }: { db: Db }) {
   const rows = (data ?? []) as { id: string; title: string; published: boolean }[];
   if (!rows.length) return <EmptyState title="No banners yet" body="A published banner appears as a strip at the top of the homepage." />;
   return (
-    <ul className="grid gap-2">
+    <ul className="grid grid-cols-1 gap-2">
       {rows.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-light px-4 py-3 text-sm">
           <span className="min-w-0 font-bold">{r.title}<span className="block text-xs font-normal text-slate">{r.published ? "Live on homepage" : "Draft"}</span></span>

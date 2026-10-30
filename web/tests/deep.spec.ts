@@ -68,11 +68,13 @@ test("no console errors or hydration warnings on public pages", async ({ page })
 });
 
 test("no console errors on portal pages for each role", async ({ browser }) => {
+  test.setTimeout(180_000); // five roles, ~25 pages
   const plan: [RegExp, string[]][] = [
     [/Portal admin/, ["/s", "/account", "/e"]],
     [/Content publisher/, ["/s/publisher", "/s/publisher?tab=recordings", "/s/publisher?tab=homepage"]],
-    [/Product owner/, ["/e", "/e/playground", "/e/playground/document-intelligence", "/e/live"]],
-    [/Acme Bank/, ["/c/acme-bank", "/c/acme-bank/members", "/workspace", "/c/acme-bank/observations", "/c/acme-bank/observations/new", "/c/acme-bank/sandboxes/sme-credit-decisioning"]],
+    [/Product owner/, ["/e", "/e/playground", "/e/playground/document-intelligence", "/e/live", "/s/insights", "/s/insights/ideas/new"]],
+    [/Learning moderator/, ["/s/moderation", "/s/moderation?tab=published", "/s/reports", "/learning"]],
+    [/Acme Bank/, ["/c/acme-bank", "/c/acme-bank/members", "/workspace", "/c/acme-bank/observations", "/c/acme-bank/observations/new", "/c/acme-bank/sandboxes/sme-credit-decisioning", "/learning", "/learning/themes", "/learning/ideas"]],
   ];
   const errors: string[] = [];
   for (const [who, paths] of plan) {
@@ -109,7 +111,7 @@ test("mobile (390px): no horizontal overflow on public and portal pages", async 
   }
   const client = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
   await demoLogin(client, /Acme Bank/);
-  for (const p of ["/c/acme-bank", "/c/acme-bank/observations", "/c/acme-bank/observations/new", "/c/acme-bank/sandboxes/financial-analysis"]) {
+  for (const p of ["/c/acme-bank", "/c/acme-bank/observations", "/c/acme-bank/observations/new", "/c/acme-bank/sandboxes/financial-analysis", "/learning", "/learning/themes", "/learning/ideas"]) {
     await client.goto(p);
     await client.waitForLoadState("networkidle");
     const w = await client.evaluate(() => document.documentElement.scrollWidth);

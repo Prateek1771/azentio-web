@@ -64,6 +64,13 @@ export async function requireGrant(...kinds: GrantKind[]): Promise<Session> {
   return s;
 }
 
+// Shared learning is for any active employee or client member.
+export async function requireMember(): Promise<Session> {
+  const s = await requireUser("/learning");
+  if (!isEmployee(s) && !clientOrgs(s).length) forbidden();
+  return s;
+}
+
 // 404 (not 403) for orgs you don't belong to: never confirm another tenant exists.
 export async function requireOrg(slug: string): Promise<{ session: Session; org: Membership }> {
   const session = await requireUser(`/c/${slug}`);
