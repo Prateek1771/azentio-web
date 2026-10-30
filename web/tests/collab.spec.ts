@@ -6,7 +6,8 @@ const REST = `${process.env.NEXT_PUBLIC_INSFORGE_URL}/api/database/records`;
 const auth = { Authorization: `Bearer ${process.env.INSFORGE_API_KEY}`, "Content-Type": "application/json", Prefer: "return=representation" };
 const persona = (a: string) => (process.env.DEMO_INBOX ?? "hitliprateek5@gmail.com").replace("@", `+${a}@`).toLowerCase();
 const stamp = Date.now();
-const tag = `c${stamp.toString(36)}`; // no long digit runs: comment bodies are PII-scanned
+const tag = `c${stamp.toString(36)}`;
+const SEEDED = "Seasonal SME inflows misread as distress"; // from npm run seed // no long digit runs: comment bodies are PII-scanned
 
 test.describe.configure({ mode: "serial" });
 
@@ -60,8 +61,9 @@ test("client admin manages roles; the last administrator can't be removed", asyn
 
 test("feed collaboration: open an item, bookmark, rate, comment, save a search", async ({ page }) => {
   await demoLogin(page, /Acme Bank/);
-  await page.goto("/learning");
-  await page.getByRole("article").first().getByRole("link").first().click();
+  // a seeded item: other specs publish and withdraw their own items in parallel
+  await page.goto("/learning?q=distress");
+  await page.getByRole("link", { name: SEEDED }).first().click();
   await expect(visible(page, "Approved contribution")).toBeVisible();
 
   await page.getByRole("button", { name: "Bookmark" }).click();
@@ -79,13 +81,13 @@ test("feed collaboration: open an item, bookmark, rate, comment, save a search",
   await page.goto("/learning?q=seasonal");
   await page.getByLabel("Name for this search").fill(`Seasonality ${tag}`);
   await page.getByRole("button", { name: "Save this search" }).click();
-  await page.goto("/learning/saved");
+  await page.waitForURL("**/learning/saved");
   await expect(visible(page, `Seasonality ${tag}`)).toBeVisible();
   await expect(page.getByRole("heading", { name: /Bookmarks \(\d+\)/ })).not.toHaveText("Bookmarks (0)");
 
   // undo the shared-state changes so other runs start clean
-  await page.goto("/learning");
-  await page.getByRole("article").first().getByRole("link").first().click();
+  await page.goto("/learning?q=distress");
+  await page.getByRole("link", { name: SEEDED }).first().click();
   await page.getByRole("button", { name: "Bookmarked" }).click();
   await page.getByRole("button", { name: "Useful" }).click();
   await expect(page.getByRole("button", { name: "Useful" })).toHaveAttribute("aria-pressed", "false");

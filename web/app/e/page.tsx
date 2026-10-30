@@ -20,7 +20,9 @@ async function EmployeeHome() {
         <div className="grid grid-cols-3 gap-5 max-[959px]:grid-cols-2 max-sm:grid-cols-1">
           <Tile title="Playground" body="Guided product workflows on synthetic scenarios. Every output is labelled simulated." href="/e/playground" />
           <Tile title="Internal Live" body="Employee-only broadcasts and past recordings." href="/e/live" />
-          <Tile title="Experiments" body="Submit and follow internal experiments and hackathon team spaces." badge="Phase 7" />
+          <Tile title="Experiments" body="What we are testing, why, and what happened." href="/e/experiments" />
+          <Tile title="Team spaces" body="Hackathon teams and working groups, with their experiments." href="/e/teams" />
+          <Tile title="Knowledge library" body="Internal guides with an owner and a review date." href="/e/library" />
           <Tile title="Shared learning" body="Approved, de-identified market observations, themes and improvement ideas." href="/learning" />
           <Tile
             title="Improvement ideas"

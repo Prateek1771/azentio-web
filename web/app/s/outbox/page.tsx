@@ -5,6 +5,7 @@ import { createInsForgeServerClient } from "@/lib/insforge/server";
 import { EmptyState, Section } from "@/components/portal/primitives";
 import { Panel, PortalBand } from "@/components/portal/portal";
 import { cn } from "@/lib/utils";
+import { emailDeliveryOn } from "@/lib/email/outbox";
 
 export const metadata: Metadata = { title: "Email outbox" };
 
@@ -31,6 +32,12 @@ async function Outbox() {
       <PortalBand eyebrow="Staff console · Administration" title="Email outbox" lead="Every email is queued once per event and sent at most once. Failed sends retry with backoff; anything interrupted mid-send is marked unknown rather than risk a duplicate." />
       <Section className="py-12">
         <div className="grid gap-6">
+          {!emailDeliveryOn() && (
+            <p role="note" className="rounded-[10px] border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+              <strong>Email delivery is off.</strong> Custom email needs a paid InsForge plan, so emails stay queued here and people are
+              notified in the portal (bell and realtime) instead. Set <code>EMAIL_DELIVERY=insforge</code> after upgrading; queued emails then send once each.
+            </p>
+          )}
           <ul aria-label="Outbox by status" className="grid grid-cols-6 gap-3 max-md:grid-cols-3">
             {counts.map(([k, n]) => (
               <li key={k} className="rounded-[10px] border border-line bg-white p-4">

@@ -5,7 +5,7 @@ import { CommentForm } from "./comment-form";
 type C = { id: string; body: string; at: string; mine: boolean; author_label: string; hidden: boolean };
 
 // Audience is inherited: the thread RPC re-checks that the viewer can see the parent.
-export async function CommentThread({ type, parentId, back, moderator = false }: { type: "shared" | "content"; parentId: string; back: string; moderator?: boolean }) {
+export async function CommentThread({ type, parentId, back, moderator = false }: { type: "shared" | "content" | "experiment"; parentId: string; back: string; moderator?: boolean }) {
   const { data } = await (await createInsForgeServerClient()).database.rpc("comment_thread", { p_type: type, p_id: parentId });
   const comments = (data ?? []) as C[];
   const act = commentAction.bind(null, back);

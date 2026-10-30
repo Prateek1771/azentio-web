@@ -613,6 +613,80 @@ if (adm) {
   }
 }
 
+// ── Phase 7b: team spaces, experiments, knowledge library (employees only) ──
+{
+  const a = p["acme-admin"], po = p.po, mod = p.moderator, pub = p.publisher;
+  if (po && mod && pub) {
+    const { data: t } = await po.db.from("teams").insert([{ name: `${TAG} squad`, kind: "hackathon" }]).select("id").single();
+    const tid = (t as { id: string } | null)?.id;
+    await check("po", "creates a team and becomes its lead", async () =>
+      tid && ((await rows(po.db.from("team_members").select("role").eq("team_id", tid).eq("user_id", po.uid))) as { role: string }[] | null)?.[0]?.role === "lead" ? true : "not lead");
+    if (tid) {
+      await check("po", "adds a colleague", async () => ((await po.db.from("team_members").insert([{ team_id: tid, user_id: mod.uid }])).error ? "failed" : true));
+      if (a) await check("po", "cannot add a client to a team", () => failsWrite(po.db.from("team_members").insert([{ team_id: tid, user_id: a.uid }])));
+      await check("moderator", "a member (not lead) cannot add people", () => failsWrite(mod.db.from("team_members").insert([{ team_id: tid, user_id: pub.uid }])));
+      await check("moderator", "a member cannot promote themselves", async () =>
+        ((await mod.db.from("team_members").update({ role: "lead" }).eq("team_id", tid).eq("user_id", mod.uid).select("user_id")).data?.length ? "promoted" : true));
+      await check("po", "the last lead cannot step down", async () =>
+        (await po.db.from("team_members").update({ role: "member" }).eq("team_id", tid).eq("user_id", po.uid)).error ? true : "stepped down");
+
+      const { data: e } = await po.db.from("experiments").insert([{ title: `${TAG} seasonal scorecard test`, hypothesis: "Seasonal adjustment reduces false Q1 referrals.", status: "draft", team_id: tid }]).select("id").single();
+      const eid = (e as { id: string } | null)?.id;
+      await check("po", "files a team experiment", async () => (eid ? true : "insert failed"));
+      if (eid) {
+        await check("moderator", "teammates see the team's draft", async () => ((await rows(mod.db.from("experiments").select("id").eq("id", eid)))?.length ? true : "missing"));
+        await check("publisher", "non-members don't see the draft", () => denied(pub.db.from("experiments").select("id").eq("id", eid)));
+        await check("moderator", "teammates can edit", async () =>
+          ((await mod.db.from("experiments").update({ method: "A/B on 2025 referrals." }).eq("id", eid).select("id")).data?.length ? true : "not updated"));
+        await po.db.from("experiments").update({ status: "running" }).eq("id", eid);
+        await check("publisher", "sees it once running, but can't edit", async () => {
+          const seen = (await rows(pub.db.from("experiments").select("id").eq("id", eid)))?.length;
+          const { data } = await pub.db.from("experiments").update({ title: `${TAG} hijacked` }).eq("id", eid).select("id");
+          return seen && !data?.length ? true : `seen=${seen}, edited=${data?.length}`;
+        });
+        await check("publisher", "comments on a running experiment", async () =>
+          ((await pub.db.from("comments").insert([{ parent_type: "experiment", parent_id: eid, body: "rlstest-exp worth trying on Q2 too" }])).error ? "failed" : true));
+        if (a) {
+          await check("acme-admin", "cannot see experiments or teams", async () =>
+            (await denied(a.db.from("experiments").select("id").eq("id", eid))) === true && (await denied(a.db.from("teams").select("id").eq("id", tid))) === true ? true : "LEAK");
+          await check("acme-admin", "cannot read an experiment thread", async () =>
+            (((await a.db.rpc("comment_thread", { p_type: "experiment", p_id: eid })).data as unknown[] | null)?.length ? "LEAK" : true));
+          await check("acme-admin", "cannot comment on experiments", () => failsWrite(a.db.from("comments").insert([{ parent_type: "experiment", parent_id: eid, body: "rlstest-exp client peek" }])));
+          await check("acme-admin", "gets an empty employee directory", async () => (((await a.db.rpc("employee_directory")).data as unknown[] | null)?.length ? "LEAK" : true));
+        }
+      }
+      await check("moderator", "can leave the team", async () => {
+        await mod.db.from("team_members").delete().eq("team_id", tid).eq("user_id", mod.uid);
+        return (await admin.from("team_members").select("user_id").eq("team_id", tid).eq("user_id", mod.uid)).data?.length ? "still in" : true;
+      });
+    }
+
+    // knowledge library: every employee can own entries; only the owner edits
+    const lib = { kind: "library", audience: "employee", title: `${TAG} SME onboarding guide`, body: "How we onboard SME clients to the workbench.", review_date: "2026-01-01" };
+    const { data: l } = await pub.db.from("content").insert([{ ...lib, owner_id: pub.uid, published: true }]).select("id").single();
+    const lid = (l as { id: string } | null)?.id;
+    await check("publisher", "owns a library entry", async () => (lid ? true : "insert failed"));
+    const { data: dr } = await po.db.from("content").insert([{ ...lib, title: `${TAG} draft guide`, owner_id: po.uid, published: false }]).select("id").single();
+    const did = (dr as { id: string } | null)?.id;
+    await check("po", "any employee can write a library entry", async () => (did ? true : "insert failed"));
+    if (lid) {
+      await check("po", "reads a colleague's published entry", async () => ((await rows(po.db.from("content").select("id").eq("id", lid)))?.length ? true : "missing"));
+      await check("po", "cannot edit a colleague's entry", async () =>
+        ((await po.db.from("content").update({ title: `${TAG} hijacked` }).eq("id", lid).select("id")).data?.length ? "edited" : true));
+      if (a) await check("acme-admin", "cannot read the employee library", () => denied(a.db.from("content").select("id").eq("id", lid)));
+    }
+    if (did) await check("moderator", "cannot see a colleague's draft entry", () => denied(mod.db.from("content").select("id").eq("id", did)));
+    await check("po", "cannot use the library to publish to the public site", () =>
+      failsWrite(po.db.from("content").insert([{ ...lib, audience: "public", owner_id: po.uid, published: true }])));
+    await check("po", "cannot write an entry owned by someone else", () => failsWrite(po.db.from("content").insert([{ ...lib, owner_id: pub.uid }])));
+
+    await admin.from("comments").delete().like("body", "rlstest-exp%");
+    await admin.from("experiments").delete().like("title", `${TAG}%`);
+    await admin.from("teams").delete().like("name", `${TAG}%`);
+    await admin.from("content").delete().like("title", `${TAG}%`);
+  }
+}
+
 // ── cleanup (admin key) ──────────────────────────────────────────────────
 // emails this run queued for demo personas (returns, publishes, idea updates) are test noise, never sent
 await admin.from("outbox").delete().gte("created_at", STARTED).like("to_email", INBOX.replace("@", "+%@")).in("status", ["queued", "retry"]);

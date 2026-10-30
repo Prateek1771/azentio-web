@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireMember, requireUser } from "@/lib/authz";
 import { createInsForgeServerClient } from "@/lib/insforge/server";
@@ -12,7 +13,7 @@ const path = z.string().regex(/^\/[a-z0-9/_-]*$/i).catch("/learning");
 const db = async () => (await createInsForgeServerClient()).database;
 
 // RLS decides everything here: own rows only, and only on parents the user can already see.
-export async function addComment(type: "shared" | "content", parentId: string, back: string, _: CommentState, form: FormData): Promise<CommentState> {
+export async function addComment(type: "shared" | "content" | "experiment", parentId: string, back: string, _: CommentState, form: FormData): Promise<CommentState> {
   await requireUser();
   const body = String(form.get("body") ?? "").trim();
   if (body.length < 2 || body.length > 2000) return { error: "Comments need 2–2,000 characters." };
@@ -59,6 +60,7 @@ export async function saveSearch(form: FormData) {
   if (!name || !Object.keys(query).length) return;
   await (await db()).from("saved_searches").insert([{ name, query }]);
   revalidatePath("/learning/saved");
+  redirect("/learning/saved"); // confirms the save by showing it
 }
 
 export async function deleteSavedSearch(form: FormData) {

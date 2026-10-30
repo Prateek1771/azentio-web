@@ -57,7 +57,7 @@ export function InviteForm({ slug }: { slug: string }) {
             </button>
           </div>
           <p className="text-xs text-slate">
-            {state.emailed ? "We've also emailed the invitation. Delivery depends on their mail provider." : "Email couldn't be queued; share the link directly."}
+            Share this link with them directly. {state.emailed ? "A copy is also queued for email, which sends when email delivery is switched on." : ""}
           </p>
         </div>
       )}

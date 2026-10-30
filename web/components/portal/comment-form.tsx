@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { type CommentState, addComment } from "@/lib/learning/collab";
 import { fieldCls } from "@/components/site/form-bits";
 
-export function CommentForm({ type, parentId, back }: { type: "shared" | "content"; parentId: string; back: string }) {
+export function CommentForm({ type, parentId, back }: { type: "shared" | "content" | "experiment"; parentId: string; back: string }) {
   const [state, action, pending] = useActionState(addComment.bind(null, type, parentId, back), {} as CommentState);
   return (
     <form action={action} className="grid gap-2">

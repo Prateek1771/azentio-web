@@ -72,7 +72,7 @@ test("no console errors on portal pages for each role", async ({ browser }) => {
   const plan: [RegExp, string[]][] = [
     [/Portal admin/, ["/s", "/account", "/e", "/s/outbox"]],
     [/Content publisher/, ["/s/publisher", "/s/publisher?tab=recordings", "/s/publisher?tab=homepage", "/s/publisher?tab=clients"]],
-    [/Product owner/, ["/e", "/e/playground", "/e/playground/document-intelligence", "/e/live", "/s/insights", "/s/insights/ideas/new"]],
+    [/Product owner/, ["/e", "/e/playground", "/e/playground/document-intelligence", "/e/live", "/s/insights", "/s/insights/ideas/new", "/e/teams", "/e/experiments", "/e/library", "/e/library/new"]],
     [/Learning moderator/, ["/s/moderation", "/s/moderation?tab=published", "/s/reports", "/learning"]],
     [/Acme Bank/, ["/c/acme-bank", "/c/acme-bank/members", "/workspace", "/c/acme-bank/observations", "/c/acme-bank/observations/new", "/c/acme-bank/sandboxes/sme-credit-decisioning", "/learning", "/learning/themes", "/learning/ideas", "/learning/saved", "/c/acme-bank/resources"]],
   ];
@@ -106,7 +106,7 @@ test("mobile (390px): no horizontal overflow on public and portal pages", async 
     if (r) bad.push(r);
   }
   await demoLogin(page, /Product owner/);
-  for (const p of ["/e", "/e/playground", "/e/playground/financial-analysis", "/e/live", "/account"]) {
+  for (const p of ["/e", "/e/playground", "/e/playground/financial-analysis", "/e/live", "/account", "/e/teams", "/e/experiments", "/e/library"]) {
     const r = await overflow(p);
     if (r) bad.push(r);
   }
