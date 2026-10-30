@@ -1,0 +1,23 @@
+
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.agents
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf
+
+
+skills-lock.json
+# secrets
+.mcp.json
+.env*
+!.env.example

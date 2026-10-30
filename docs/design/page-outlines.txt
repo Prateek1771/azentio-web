@@ -1,0 +1,264 @@
+
+======== about.html
+  h1: Built on Curiosity. Driven by Purpose.
+   p: We combine domain understanding, product thinking, AI engineering, and a culture of experimentation to build intelligent solutions.
+   p: Engineer practical, responsible, and impactful AI products that simplify complexity and enable better decisions.
+   p: A future where intelligence is seamlessly embedded into everyday enterprise experiences.
+   p: Start with real problems and measure meaningful outcomes.
+   p: Make security, accountability, and human oversight foundational.
+   p: Explore our products, share a challenge, or collaborate to turn ambitious ideas into working AI solutions.
+
+======== configurator.html
+  a: View website
+  a: Sign out
+  h1: Your publishing workspace.
+  button: Stream settings
+  button: Past recordings
+  button: Homepage
+  label: Video title
+  label: Platform video or embed URL
+  label: Display this video on Live
+  button: Save stream settings
+   p: Manage the homepage, live video, and past recordings in one place.
+   p: Loading configuration…
+   p: YouTube, Twitch, and Vimeo links are converted automatically. Other platforms need their HTTPS embed URL and must permit embedding. Direct MP4 and WebM URLs also work.
+
+======== connect.html
+  h1: Have a Challenge? Let's Build What Comes Next.
+  h2: Start with a Conversation.
+  label: I'm interested in Requesting a product demo Exploring a collaboration Submitting an AI challenge General enquiry
+  label: Name
+  label: Work email
+  label: Organization
+  label: Tell us more
+  button: Submit Enquiry
+   p: Explore a product, share an AI opportunity, or start a conversation about collaboration.
+   p: Tell us what you're exploring. We can discuss product capabilities, integration considerations, and opportunities to collaborate.
+   p: Demo form only. No data is collected or transmitted.
+
+======== hackathon__register.html
+  h1: Start with an idea.
+  label: Your name
+  label: Email address
+  label: Website
+  label: I agree that my name and email may be stored and shared with the event organizer for hackathon participation updates.
+  button: Register interest →
+   p: Register your interest in building, experimenting, and collaborating. Dates and participation details will be announced.
+   p: Your details are stored privately for this event. No dates or places are confirmed yet. The organizer receives your registration details by email when notifications are enabled. No confirmation email is sent to you.
+
+======== index.html
+HEADER: a zent i o .ai Products Innovation AI Lab Technology Hackathons Explore Solutions Media & Videos Insights About Admin ⋮ Configurator Playground Live Streaming Request Demo Request Demo
+FOOTER: a zent i o .ai Build Intelligence. Create Impact. Explore Products Solutions AI Lab Technology Discover Media Live Insights About Connect Request Demo Collaborate Contact Admin Playground © 2026 azentio.ai · Product information is indicative and subject to validation. Privacy · Terms · Accessibility
+  h1: Build Intelligence. Create Impact.
+  a: Explore our products ↗
+  h2: Intelligence, Engineered for the Real World.
+  h2: Intelligence in Every Layer.
+  button: Intelligent Decisioning Turn policies, evidence, and data into informed recommendations. Hover or tap to explore ↗ Intelligent Decisioning Policy to recommendation Evalua
+  button: Document Intelligence Extract, interpret, and validate complex information. Hover or tap to explore ↗ Document Intelligence Documents to structured data Classify & extrac
+  button: AI Agents & Automation Connect intelligence with workflows and human oversight. Hover or tap to explore ↗ AI Agents & Automation Tasks to connected workflows Interpret ta
+  button: Analytics & Insights Transform data into actionable intelligence. Hover or tap to explore ↗ Analytics & Insights Data to actionable insight Unify data sources Identify tr
+  button: Configurable AI Platforms Adapt solutions to evolving business requirements. Hover or tap to explore ↗ Configurable AI Platforms Adapt the platform Configure rules Map da
+  button: Trusted Enterprise AI Design for security, accountability, and traceability. Hover or tap to explore ↗ Trusted Enterprise AI Governed enterprise intelligence Enterprise S
+  h2: Built to Work. Designed to Evolve.
+  a: View all products
+  h2: Don't Just Imagine What AI Can Do. See It.
+  a: Watch Product Showcases
+  h2: Innovation Without Compromising Trust.
+  h2: Ideas in Motion.
+  h2: The Next Intelligent Idea Starts Here.
+  a: Start a Conversation
+   p: From ideas to intelligent products. From complexity to clarity. From AI potential to meaningful outcomes.
+   p: AI creates value when it moves beyond experimentation and becomes part of how businesses operate. We build intelligent applications combining domain understanding, advanced AI, intuitive experiences, and enterprise-grade engineering.
+   p: Capabilities designed to connect information, intelligence, and action.
+   p: Simulate credit policy changes before deployment. Explore potential effects on approvals, risk exposure, and portfolio outcomes.
+   p: Bring financial analysis, policy evaluation, risk review, and credit recommendations into one workbench with evidence and human oversight.
+   p: Compare financing applications with relevant historical portfolio segments to understand patterns, risk indicators, and comparable outcomes.
+   p: A configurable reporting environment connecting data sources, mapping report fields, supporting validation, and simplifying reporting workflows.
+   p: Explore real product experiences, intelligent workflows, and ideas brought to life through engineering.
+
+======== insights.html
+  h1: Ideas Worth Exploring. Perspectives Worth Sharing.
+   p: Practical thinking on applied AI, engineering, product innovation, and responsible enterprise intelligence.
+   p: How evidence, oversight, and transparent recommendations shape responsible decision support.
+   p: Moving beyond templates to configurable, validated, and traceable reporting.
+   p: Considerations for privacy, performance, deployment, and governance.
+   p: Lessons from experiments, prototypes, and production-oriented design.
+   p: Explore our products, share a challenge, or collaborate to turn ambitious ideas into working AI solutions.
+
+======== lab.html
+  h1: Experiment Boldly. Engineer Purposefully.
+   p: Where emerging technologies meet practical challenges. We experiment, prototype, validate, and refine ideas.
+   p: Explore how we approach rapid prototyping and real-world experimentation.
+   p: Agentic AI, small language models, multimodal intelligence, and AI-assisted engineering.
+   p: From problem statements and experiments to working prototypes and lessons learned.
+   p: Innovation challenges, working sessions, and opportunities to build together.
+   p: Explore our products, share a challenge, or collaborate to turn ambitious ideas into working AI solutions.
+
+======== live.html
+  h1: Where Intelligence Comes Alive.
+  h2: azentio.ai Live
+  a: Configure Live →
+  h2: Past recordings
+  button: Refresh videos
+   p: Join live conversations, experience product demonstrations, and watch past sessions.
+   p: Loading stream…
+   p: Loading recordings…
+
+======== media.html
+  h1: See the Thinking. Experience the Technology.
+   p: Product demonstrations, explainers, engineering stories, and ideas in motion.
+   p: Introducing our approach to applied AI.
+   p: An overview of intelligent products in action.
+   p: Explore evidence-backed credit decisioning.
+   p: Experiments, prototypes, and lessons learned.
+   p: Explore our products, share a challenge, or collaborate to turn ambitious ideas into working AI solutions.
+
+======== playground.html
+  h1: Explore. Experiment. Evolve.
+  label: Choose a product Credit Strategy Simulator SME Credit Decisioning Workbench Similar Portfolio Intelligence RIVA Rejection Intelligence Financial Analysis Intelligence Doc
+  label: Describe your scenario
+  button: Preview workflow →
+   p: A guided space to explore product workflows.
+   p: Explore a guided product workflow. This is a local scenario preview; it does not run a model or process enterprise data. Use fictional examples only.
+
+======== products.html
+  h1: Intelligent Products. Real-World Purpose.
+  h2: Credit Intelligence
+  h2: Reporting & Analytics
+  h2: AI Applications
+  h2: The Next Intelligent Idea Starts Here.
+  a: Start a Conversation
+   p: Explore a growing portfolio of applied AI experiences, from credit decisioning to reporting and document intelligence.
+   p: Simulate credit policy changes before deployment. Explore potential effects on approvals, risk exposure, and portfolio outcomes.
+   p: Bring financial analysis, policy evaluation, risk review, and credit recommendations into one workbench with evidence and human oversight.
+   p: Compare financing applications with relevant historical portfolio segments to understand patterns, risk indicators, and comparable outcomes.
+   p: Analyze declined applications, uncover rejection patterns, and simulate changes that could improve eligible approvals.
+   p: A configurable reporting environment connecting data sources, mapping report fields, supporting validation, and simplifying reporting workflows.
+   p: Turn financial statements into structured analysis, ratios, trends, and decision-ready credit insights.
+   p: Extract, classify, structure, and validate information from financial documents, identity records, and complex inputs.
+
+======== products__credit-strategy-simulator.html
+  a: All Products
+  h1: Test the Strategy. Understand the Impact.
+  a: Request a Demo
+  h2: Credit Strategy Simulator
+   p: Simulate credit policy changes before deployment. Explore potential effects on approvals, risk exposure, and portfolio outcomes.
+   p: Simulate credit policy changes before deployment. Explore potential effects on approvals, risk exposure, and portfolio outcomes.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Benefits describe intended outcomes, not verified performance claims.
+   p: See how this solution could fit your business processes and enterprise environment.
+
+======== products__document-intelligence.html
+  a: All Products
+  h1: Documents In. Intelligence Out.
+  a: Request a Demo
+  h2: Document Intelligence
+   p: Extract, classify, structure, and validate information from financial documents, identity records, and complex inputs.
+   p: Extract, classify, structure, and validate information from financial documents, identity records, and complex inputs.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Benefits describe intended outcomes, not verified performance claims.
+   p: See how this solution could fit your business processes and enterprise environment.
+
+======== products__financial-analysis.html
+  a: All Products
+  h1: Numbers Tell a Story. Intelligence Reveals It.
+  a: Request a Demo
+  h2: Financial Analysis Intelligence
+   p: Turn financial statements into structured analysis, ratios, trends, and decision-ready credit insights.
+   p: Turn financial statements into structured analysis, ratios, trends, and decision-ready credit insights.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Benefits describe intended outcomes, not verified performance claims.
+   p: See how this solution could fit your business processes and enterprise environment.
+
+======== products__persona-newsroom.html
+  a: All Products
+  h1: Relevant News. Distinct Perspectives.
+  a: Request a Demo
+  h2: Persona Newsroom
+   p: Discover relevant market news, match stories to executive personas, and generate editable thought-leadership drafts.
+   p: Discover relevant market news, match stories to executive personas, and generate editable thought-leadership drafts.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Benefits describe intended outcomes, not verified performance claims.
+   p: See how this solution could fit your business processes and enterprise environment.
+
+======== products__rejection-intelligence.html
+  a: All Products
+  h1: Understand Every Rejection. Discover Every Opportunity.
+  a: Request a Demo
+  h2: Rejection Intelligence
+   p: Analyze declined applications, uncover rejection patterns, and simulate changes that could improve eligible approvals.
+   p: Analyze declined applications, uncover rejection patterns, and simulate changes that could improve eligible approvals.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Benefits describe intended outcomes, not verified performance claims.
+   p: See how this solution could fit your business processes and enterprise environment.
+
+======== products__riva.html
+  a: All Products
+  h1: From Complex Data to Confident Reporting.
+  a: Request a Demo
+  h2: RIVA
+   p: A configurable reporting environment connecting data sources, mapping report fields, supporting validation, and simplifying reporting workflows.
+   p: A configurable reporting environment connecting data sources, mapping report fields, supporting validation, and simplifying reporting workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Benefits describe intended outcomes, not verified performance claims.
+   p: See how this solution could fit your business processes and enterprise environment.
+
+======== products__similar-portfolio-intelligence.html
+  a: All Products
+  h1: Learn from Similarity. Decide with Context.
+  a: Request a Demo
+  h2: Similar Portfolio Intelligence
+   p: Compare financing applications with relevant historical portfolio segments to understand patterns, risk indicators, and comparable outcomes.
+   p: Compare financing applications with relevant historical portfolio segments to understand patterns, risk indicators, and comparable outcomes.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Benefits describe intended outcomes, not verified performance claims.
+   p: See how this solution could fit your business processes and enterprise environment.
+
+======== products__sme-credit-decisioning.html
+  a: All Products
+  h1: Every Decision, Backed by Intelligence.
+  a: Request a Demo
+  h2: SME Credit Decisioning Workbench
+   p: Bring financial analysis, policy evaluation, risk review, and credit recommendations into one workbench with evidence and human oversight.
+   p: Bring financial analysis, policy evaluation, risk review, and credit recommendations into one workbench with evidence and human oversight.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Designed to support transparent, configurable, and practical workflows.
+   p: Benefits describe intended outcomes, not verified performance claims.
+   p: See how this solution could fit your business processes and enterprise environment.
+
+======== solutions.html
+  h1: Real Challenges. Intelligent Solutions.
+   p: Practical intelligence for financial services and complex enterprise workflows.
+   p: Improve transparency and efficiency across credit assessment.
+   p: Evaluate policy scenarios before implementation.
+   p: Simplify data mapping, validation, and reporting preparation.
+   p: Use historical patterns to strengthen decision context.
+   p: Connect fragmented information and repetitive workflows.
+   p: Turn information into relevant, contextual outputs.
+   p: Explore our products, share a challenge, or collaborate to turn ambitious ideas into working AI solutions.
+
+======== technology.html
+  h1: Built for Intelligence. Engineered for Trust.
+   p: Reliable data foundations, thoughtful orchestration, secure integration, controlled execution, and transparent governance.
+   p: Connect applications, data sources, business rules, and enterprise services through controlled interfaces.
+   p: Combine models, workflows, agents, deterministic logic, and human approvals.
+   p: Support institution SSO, role-based access, encrypted transport, audit trails, and secure deployment.
+   p: Support explainability, model oversight, traceability, and human control. Security testing claims require verified evidence.
+   p: Explore our products, share a challenge, or collaborate to turn ambitious ideas into working AI solutions.
+
+======== CLASSES mega-label eyebrow container nav-thumbnail primary-link btn logo navigation-group nav-disclosure mega-panel mega-links info-card section flow-step section-head cap-point ai-activation ai-activation-aura ai-activation-center ai-neural ai-core ai-energy ai-activation-copy ai-activation-quote ai-quote-break ai-activation-wordmark ai-activation-status skip-link header site-header header-inner site-header-inner primary-navigation primary-links admin-menu-toggle mobile-nav-extras header-demo navigation-toggle footer footer-grid footer-bottom assistant-toggle aira-mark page-hero cta glow info-grid section-muted cap-face product-card product-art product-thumbnail product-body learn actions disclaimer product-hero back-link status flow checklist cap-flip cap-flip-inner cap-front cap-back cap-subtitle cap-points product-grid video-card video-thumb video-info contact-form form-note muted product-category config-form config-checkbox standalone-admin admin-toolbar admin-intro admin-content config-tabs contact-layout two-col form-honeypot hero home-carousel banner-image banner-shade hero-content banner-accent carousel-controls carousel-dots section-intro cap-grid text-link cinematic cinematic-inner trust-grid news-grid video-grid art-0 art-1 art-2 art-3 playground-controls architecture green-outline
