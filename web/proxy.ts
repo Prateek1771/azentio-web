@@ -5,7 +5,7 @@ import { products } from "@/lib/content";
 const SLUGS = new Set(products.map((p) => p.slug));
 // Catalogue routes with a closed set of slugs. Cache Components streams the shell before
 // notFound() can run, so unknown slugs get their real 404 status here instead.
-const CATALOGUE = /^\/(?:products|e\/playground)\/([^/]+)\/?$/;
+const CATALOGUE = /^\/(?:products|e\/playground|c\/[^/]+\/sandboxes)\/([^/]+)\/?$/;
 
 export async function proxy(request: NextRequest) {
   const slug = request.nextUrl.pathname.match(CATALOGUE)?.[1];

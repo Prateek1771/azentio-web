@@ -24,7 +24,7 @@ const TONE = {
 const input =
   "w-full rounded-md border border-[#d7e1e8] bg-white px-3 py-2 text-sm text-ink outline-none focus:border-green-700 focus:ring-3 focus:ring-green/30";
 
-export function Runner({ offering, flow, scenarios }: { offering: string; flow: string[]; scenarios: Scenario[] }) {
+export function Runner({ offering, flow, scenarios, org }: { offering: string; flow: string[]; scenarios: Scenario[]; org?: string }) {
   const [active, setActive] = useState(0);
   const s = scenarios[active];
   const [values, setValues] = useState<Record<string, number | string>>({});
@@ -38,7 +38,7 @@ export function Runner({ offering, flow, scenarios }: { offering: string; flow: 
     setResult(null);
   };
   const run = () =>
-    start(async () => setResult(await runScenario({ offering, scenario: s.key, mode: ai ? "ai_assisted" : "deterministic", values })));
+    start(async () => setResult(await runScenario({ offering, scenario: s.key, mode: ai ? "ai_assisted" : "deterministic", values, org })));
 
   const out = result?.output;
   return (

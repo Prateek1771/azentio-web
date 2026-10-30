@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import OpenAI from "openai";
-import { requireEmployee } from "@/lib/authz";
+import { requireEmployee, requireOrg, requireUser } from "@/lib/authz";
 import { createInsForgeServerClient } from "@/lib/insforge/server";
 import { engines, type EngineOutput } from "./engines";
 import { scenarioFor } from "./scenarios";
@@ -47,16 +47,23 @@ const runSchema = z.object({
   scenario: z.string().regex(/^[a-z0-9-]+$/),
   mode: z.enum(["deterministic", "ai_assisted"]),
   values: z.record(z.string(), z.union([z.number(), z.string()])),
+  org: z.string().regex(/^[a-z0-9-]+$/).optional(),
 });
 
 export async function runScenario(raw: z.input<typeof runSchema>): Promise<RunResult> {
-  await requireEmployee();
   const parsed = runSchema.safeParse(raw);
   if (!parsed.success) return { error: "Invalid run request." };
   const { offering, scenario: key, mode, values } = parsed.data;
+  // Client sandboxes run inside one org (tenant + user isolated); otherwise it's the employee playground.
+  const orgId = parsed.data.org ? (await requireOrg(parsed.data.org)).org.org_id : (await requireEmployee(), null);
   const scenario = scenarioFor(offering, key);
   const engine = engines[offering];
   if (!scenario || !engine) return { error: "Unknown scenario." };
+  if (orgId) {
+    const { data: ent } = await (await createInsForgeServerClient()).database
+      .from("entitlements").select("offerings!inner(slug)").eq("org_id", orgId).eq("offerings.slug", offering).limit(1);
+    if (!ent?.length) return { error: "This offering isn't enabled for your organisation." };
+  }
 
   // Only editable fields can change, and only within the scenario's safe bounds.
   const inputs: Record<string, number | string> = { document: scenario.document ?? "" };
@@ -78,7 +85,7 @@ export async function runScenario(raw: z.input<typeof runSchema>): Promise<RunRe
   const { data: off } = await insforge.database.from("offerings").select("id").eq("slug", offering).single();
   const { data, error } = await insforge.database
     .from("playground_runs")
-    .insert([{ offering_id: (off as { id: string } | null)?.id, scenario_key: key, mode, inputs, output }])
+    .insert([{ offering_id: (off as { id: string } | null)?.id, org_id: orgId, scenario_key: key, mode, inputs, output }])
     .select("id")
     .single();
   if (error) return { error: "The run completed but couldn't be saved.", output, mode };
@@ -93,7 +100,7 @@ const feedbackSchema = z.object({
 });
 
 export async function saveFeedback(raw: z.input<typeof feedbackSchema>): Promise<{ ok?: boolean; error?: string }> {
-  await requireEmployee();
+  await requireUser(); // RLS limits feedback to the caller's own runs
   const parsed = feedbackSchema.safeParse(raw);
   if (!parsed.success) return { error: "Please choose useful / not useful and a rating." };
   const { runId, ...feedback } = parsed.data;

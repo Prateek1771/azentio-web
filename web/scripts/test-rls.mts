@@ -237,6 +237,123 @@ if (adm) {
   await admin.from("playground_runs").delete().eq("scenario_key", "rls-test");
 }
 
+// ── Phase 5: contribution lifecycle, consents, notifications, client sandboxes ──
+{
+  const a = p["acme-admin"], po = p.po, mod = p.moderator, mem = p["acme-member"], bor = p["borealis-admin"];
+  const { data: offRows } = await admin.from("offerings").select("id, slug");
+  const off = Object.fromEntries((offRows ?? []).map((o: { slug: string; id: string }) => [o.slug, o.id]));
+  type C = { id: string; state: string; version: number; visibility_choice: string; title: string; pii_flags: string[] };
+  const cur = async (id: string) => (await admin.from("contributions").select("id, state, version, visibility_choice, title, pii_flags").eq("id", id).single()).data as C;
+  // the database refused if the row is unchanged afterwards (error or zero rows, either way)
+  const unchanged = async (q: PromiseLike<unknown>, id: string, field: keyof C, expected: unknown) => {
+    await q;
+    const v = (await cur(id))[field];
+    return v === expected ? true : `${String(field)} became ${String(v)}`;
+  };
+  if (a) {
+    const base = { org_id: org["acme-bank"], type: "observation", title: `${TAG} SME demand`, body: "SME working-capital demand rose noticeably this quarter.", evidence_type: "anecdotal", confidence: "med" };
+    const mk = async (extra: Record<string, unknown> = {}) =>
+      (await a.db.from("contributions").insert([{ ...base, ...extra }]).select("id").single()).data as { id: string } | null;
+    const set = (db: Db, id: string, patch: Record<string, unknown>) => db.from("contributions").update(patch).eq("id", id);
+    const consent = (id: string, c: Record<string, boolean>) =>
+      a.db.from("consents").insert([{ contribution_id: id, store: false, publish: false, attribute: false, train: false, ...c }]);
+
+    const draft = await mk({ body: "Ask the relationship manager at rm.lead@acme.example about SME demand." });
+    await check("acme-admin", "creates a private draft", async () => (draft ? true : "insert failed"));
+    await check("acme-admin", "cannot create a contribution in another org", () =>
+      failsWrite(a.db.from("contributions").insert([{ ...base, org_id: org["borealis-finance"] }])));
+    await check("acme-admin", "cannot insert straight into review", () =>
+      failsWrite(a.db.from("contributions").insert([{ ...base, state: "submitted" }])));
+    if (draft) {
+      await check("db", "PII scan flags an email address", async () => ((await cur(draft.id)).pii_flags.includes("email") ? true : "not flagged"));
+      if (po) await check("po", "cannot see another org's draft", () => denied(po.db.from("contributions").select("id").eq("id", draft.id)));
+      if (mod) await check("moderator", "never sees drafts", () => denied(mod.db.from("contributions").select("id").eq("id", draft.id)));
+      if (mem) await check("acme-member", "cannot see a colleague's draft", () => denied(mem.db.from("contributions").select("id").eq("id", draft.id)));
+      await check("acme-admin", "private note cannot be shared", () => unchanged(set(a.db, draft.id, { state: "published" }), draft.id, "state", "draft"));
+      await check("acme-admin", "discards own draft", async () => {
+        await a.db.from("contributions").delete().eq("id", draft.id);
+        return (await admin.from("contributions").select("id").eq("id", draft.id)).data?.length ? "still there" : true;
+      });
+    }
+
+    const orgItem = await mk({ visibility_choice: "org" });
+    if (orgItem) {
+      await set(a.db, orgItem.id, { state: "published" });
+      await check("acme-admin", "shares with own org (no moderation)", async () => ((await cur(orgItem.id)).state === "published" ? true : "not shared"));
+      if (mem) await check("acme-member", "sees an org-shared observation", async () => ((await rows(mem.db.from("contributions").select("id").eq("id", orgItem.id)))?.length ? true : "missing"));
+      if (bor) await check("borealis-admin", "cannot see Acme's org-shared item", () => denied(bor.db.from("contributions").select("id").eq("id", orgItem.id)));
+      if (mod) await check("moderator", "cannot see org-only items", () => denied(mod.db.from("contributions").select("id").eq("id", orgItem.id)));
+      await check("acme-admin", "cannot widen an org item's audience", () =>
+        unchanged(set(a.db, orgItem.id, { visibility_choice: "propose_shared" }), orgItem.id, "visibility_choice", "org"));
+      await check("acme-admin", "cannot delete a shared item (withdraw instead)", async () => {
+        await a.db.from("contributions").delete().eq("id", orgItem.id);
+        return (await admin.from("contributions").select("id").eq("id", orgItem.id)).data?.length ? true : "deleted";
+      });
+      await set(a.db, orgItem.id, { body: "SME working-capital demand rose sharply this quarter, led by trade finance." });
+      await check("acme-admin", "editing an org item creates a new version", async () => {
+        const c = await cur(orgItem.id);
+        return c.version === 2 && c.state === "published" ? true : `v${c.version} ${c.state}`;
+      });
+    }
+
+    const prop = await mk({ visibility_choice: "propose_shared" });
+    if (prop) {
+      await check("acme-admin", "submit without consent is rejected", () => unchanged(set(a.db, prop.id, { state: "submitted" }), prop.id, "state", "draft"));
+      await consent(prop.id, { store: true });
+      await check("acme-admin", "submit with store-only consent is rejected", () => unchanged(set(a.db, prop.id, { state: "submitted" }), prop.id, "state", "draft"));
+      await consent(prop.id, { store: true, publish: true });
+      await set(a.db, prop.id, { state: "submitted" });
+      await check("acme-admin", "submits with store + publish consent", async () => ((await cur(prop.id)).state === "submitted" ? true : "not submitted"));
+      await check("acme-admin", "consents lock once in review", () => failsWrite(consent(prop.id, { store: true })));
+      await check("acme-admin", "consent history cannot be rewritten", async () =>
+        (await a.db.from("consents").update({ publish: false }).eq("contribution_id", prop.id)).error &&
+        (await a.db.from("consents").delete().eq("contribution_id", prop.id)).error ? true : "consent mutated");
+      await check("acme-admin", "cannot publish own submission", () => unchanged(set(a.db, prop.id, { state: "published" }), prop.id, "state", "submitted"));
+      await check("acme-admin", "cannot change audience after submit", () =>
+        unchanged(set(a.db, prop.id, { visibility_choice: "org" }), prop.id, "visibility_choice", "propose_shared"));
+      if (po) await check("po", "non-moderator employee cannot see submissions", () => denied(po.db.from("contributions").select("id").eq("id", prop.id)));
+      if (mod) {
+        await check("moderator", "sees an item in review", async () => ((await rows(mod.db.from("contributions").select("id").eq("id", prop.id)))?.length ? true : "missing"));
+        await check("moderator", "cannot edit the author's content", () => unchanged(set(mod.db, prop.id, { title: `${TAG} hijacked` }), prop.id, "title", base.title));
+        await check("moderator", "return without a reason is rejected", () => unchanged(set(mod.db, prop.id, { state: "returned" }), prop.id, "state", "submitted"));
+        await set(mod.db, prop.id, { state: "returned", moderator_reason: "Please add the region and period." });
+        await check("moderator", "returns with a reason", async () => ((await cur(prop.id)).state === "returned" ? true : "not returned"));
+        await set(a.db, prop.id, { region: "GCC", body: "SME working-capital demand in the GCC rose noticeably in Q3." });
+        await check("acme-admin", "material edit → new version back in review", async () => {
+          const c = await cur(prop.id);
+          const v = (await rows(a.db.from("contribution_versions").select("version").eq("contribution_id", prop.id))) ?? [];
+          return c.version === 2 && c.state === "submitted" && v.length === 1 ? true : `v${c.version} ${c.state}, ${v.length} snapshot(s)`;
+        });
+        await check("moderator", "was notified of the pending review", async () =>
+          ((await rows(mod.db.from("notifications").select("id").eq("kind", "review.pending").eq("payload->>contribution_id", prop.id)))?.length ? true : "no notification"));
+      }
+      await check("acme-admin", "notified of every state change (submit, return, amend)", async () => {
+        const n = (await rows(a.db.from("notifications").select("kind").eq("payload->>contribution_id", prop.id))) ?? [];
+        return n.length >= (mod ? 3 : 1) ? true : `${n.length} notification(s)`;
+      });
+      if (po) await check("po", "cannot read someone else's notifications", () => denied(po.db.from("notifications").select("id").eq("payload->>contribution_id", prop.id)));
+      await set(a.db, prop.id, { state: "withdrawn" });
+      await check("acme-admin", "withdraws", async () => ((await cur(prop.id)).state === "withdrawn" ? true : "not withdrawn"));
+      await check("acme-admin", "withdrawn is final", () => unchanged(set(a.db, prop.id, { state: "submitted" }), prop.id, "state", "withdrawn"));
+      if (mod) await check("moderator", "cannot see withdrawn items", () => denied(mod.db.from("contributions").select("id").eq("id", prop.id)));
+    }
+
+    // client sandboxes: own org, entitled offerings only, runs private to the user
+    const run = (o: string, offering: string) =>
+      a.db.from("playground_runs").insert([{ org_id: org[o], offering_id: off[offering], scenario_key: "rls-test", mode: "deterministic", inputs: {}, output: {} }]).select("id").single();
+    const ok = await run("acme-bank", "sme-credit-decisioning");
+    const rid = (ok.data as { id: string } | null)?.id;
+    await check("acme-admin", "runs an entitled sandbox", async () => (rid ? true : `insert failed: ${ok.error?.message}`));
+    await check("acme-admin", "cannot run a non-entitled offering", () => failsWrite(run("acme-bank", "riva")));
+    await check("acme-admin", "cannot run in another org's sandbox", () => failsWrite(run("borealis-finance", "sme-credit-decisioning")));
+    if (rid && mem) await check("acme-member", "cannot see a colleague's sandbox runs", () => denied(mem.db.from("playground_runs").select("id").eq("id", rid)));
+    if (rid && po) await check("po", "cannot see a client's sandbox runs", () => denied(po.db.from("playground_runs").select("id").eq("id", rid)));
+  }
+  await admin.from("notifications").delete().like("payload->>title", `${TAG}%`);
+  await admin.from("contributions").delete().like("title", `${TAG}%`);
+  await admin.from("playground_runs").delete().eq("scenario_key", "rls-test");
+}
+
 // ── cleanup (admin key) ──────────────────────────────────────────────────
 await admin.from("demo_requests").delete().eq("name", TAG);
 await admin.from("invitations").delete().like("token_hash", `${TAG}%`);

@@ -33,6 +33,7 @@ function watchErrors(page: Page) {
 }
 
 test("crawl: every internal link on the public site resolves", async ({ page, request }) => {
+  test.setTimeout(120_000); // ~25 pages, each fetched and rendered
   const seen = new Set<string>();
   const queue = [...PUBLIC_ROUTES, ...products.map((p) => `/products/${p.slug}`), "/login"];
   const broken: string[] = [];
@@ -71,7 +72,7 @@ test("no console errors on portal pages for each role", async ({ browser }) => {
     [/Portal admin/, ["/s", "/account", "/e"]],
     [/Content publisher/, ["/s/publisher", "/s/publisher?tab=recordings", "/s/publisher?tab=homepage"]],
     [/Product owner/, ["/e", "/e/playground", "/e/playground/document-intelligence", "/e/live"]],
-    [/Acme Bank/, ["/c/acme-bank", "/c/acme-bank/members", "/workspace"]],
+    [/Acme Bank/, ["/c/acme-bank", "/c/acme-bank/members", "/workspace", "/c/acme-bank/observations", "/c/acme-bank/observations/new", "/c/acme-bank/sandboxes/sme-credit-decisioning"]],
   ];
   const errors: string[] = [];
   for (const [who, paths] of plan) {
@@ -105,6 +106,14 @@ test("mobile (390px): no horizontal overflow on public and portal pages", async 
   for (const p of ["/e", "/e/playground", "/e/playground/financial-analysis", "/e/live", "/account"]) {
     const r = await overflow(p);
     if (r) bad.push(r);
+  }
+  const client = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  await demoLogin(client, /Acme Bank/);
+  for (const p of ["/c/acme-bank", "/c/acme-bank/observations", "/c/acme-bank/observations/new", "/c/acme-bank/sandboxes/financial-analysis"]) {
+    await client.goto(p);
+    await client.waitForLoadState("networkidle");
+    const w = await client.evaluate(() => document.documentElement.scrollWidth);
+    if (w > 391) bad.push(`${p}: ${w}px wide`);
   }
   expect(bad).toEqual([]);
 });
