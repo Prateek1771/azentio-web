@@ -24,6 +24,7 @@ async function EmployeeHome() {
           <Tile title="Team spaces" body="Hackathon teams and working groups, with their experiments." href="/e/teams" />
           <Tile title="Knowledge library" body="Internal guides with an owner and a review date." href="/e/library" />
           <Tile title="Shared learning" body="Approved, de-identified market observations, themes and improvement ideas." href="/learning" />
+          <Tile title="Federated learning" body="Opt-in training programme across client environments, with human model approval and rollback." href="/e/fl" />
           <Tile
             title="Improvement ideas"
             body={s.grants.includes("product_owner") ? "Ideas you own, linked to permitted evidence." : "Ideas and their status across offerings."}

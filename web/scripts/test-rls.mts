@@ -687,6 +687,64 @@ if (adm) {
   }
 }
 
+// ── Phase 9: federated learning programme ────────────────────────────────
+{
+  const flFails = async (q: PromiseLike<{ error: unknown }>) => ((await q).error ? true : "rpc unexpectedly succeeded");
+  await check("anon", "cannot read FL runs or the model registry", async () =>
+    (await denied(anonDb.from("fl_runs").select("id"))) === true && (await denied(anonDb.from("model_registry").select("id"))) === true ? true : "LEAK");
+  const { data: prog } = await admin.from("fl_programs").select("id").eq("slug", "sme-cashflow-stress").maybeSingle();
+  const pid = (prog as { id: string } | null)?.id;
+  const a = p["acme-admin"], m = p["acme-member"], po = p.po, adm = p.admin;
+  if (pid && a) {
+    await check("acme-admin", "cannot read FL runs, rounds or models", async () =>
+      [await denied(a.db.from("fl_runs").select("id")), await denied(a.db.from("fl_rounds").select("n")), await denied(a.db.from("model_registry").select("id"))].every((x) => x === true) ? true : "LEAK");
+    await check("acme-admin", "sees only own org's enrolment", async () => {
+      const r = (await rows(a.db.from("fl_enrollments").select("org_id"))) as { org_id: string }[] | null;
+      return r?.every((x) => x.org_id === org["acme-bank"]) ? true : "sees another org";
+    });
+    await check("acme-admin", "cannot enrol another org", () => flFails(a.db.rpc("fl_enroll", { p_program: pid, p_org: org["borealis-finance"], p_consent: true })));
+    await check("acme-admin", "cannot enrol without train consent", () => flFails(a.db.rpc("fl_enroll", { p_program: pid, p_org: org["acme-bank"], p_consent: false })));
+    await check("acme-admin", "cannot write enrolments directly", () =>
+      failsWrite(a.db.from("fl_enrollments").insert([{ program_id: pid, org_id: org["borealis-finance"], consent_train: true }])));
+    await check("acme-admin", "cannot approve models", () => flFails(a.db.rpc("fl_decide", { p_id: pid, p_status: "approved" })));
+    await check("acme-admin", "withdraws and re-enrols own org", async () => {
+      const w = await a.db.rpc("fl_withdraw", { p_program: pid, p_org: org["acme-bank"] });
+      const { data: after } = await admin.from("fl_enrollments").select("withdrawn_at").eq("program_id", pid).eq("org_id", org["acme-bank"]).maybeSingle();
+      const e = await a.db.rpc("fl_enroll", { p_program: pid, p_org: org["acme-bank"], p_consent: true });
+      return !w.error && !e.error && (after as { withdrawn_at: string | null } | null)?.withdrawn_at ? true : `withdraw/enrol failed: ${JSON.stringify(w.error ?? e.error)}`;
+    });
+  }
+  if (pid && m) await check("acme-member", "cannot enrol or withdraw the org", async () =>
+    (await flFails(m.db.rpc("fl_enroll", { p_program: pid, p_org: org["acme-bank"], p_consent: true }))) === true &&
+    (await flFails(m.db.rpc("fl_withdraw", { p_program: pid, p_org: org["acme-bank"] }))) === true ? true : "member changed enrolment");
+
+  // Registry lifecycle on a throwaway programme so the demo registry is untouched.
+  if (adm && po) {
+    const { data: tp } = await admin.from("fl_programs").insert([{ slug: `${TAG}-fl`, name: TAG, task: "test" }]).select("id").single();
+    const tpid = (tp as { id: string }).id;
+    const { data: tr } = await admin.from("fl_runs").insert([{ program_id: tpid, params: {}, aggregation: "test", participants: [], comparison: {}, skew: {}, finished_at: new Date().toISOString() }]).select("id").single();
+    const cand = async (version: number) =>
+      ((await admin.from("model_registry").insert([{ program_id: tpid, run_id: (tr as { id: string }).id, version, metrics: { auc: 0.8 }, weights: [0], weights_sha256: "x" }]).select("id").single()).data as { id: string }).id;
+    const status = async (id: string) => ((await admin.from("model_registry").select("status").eq("id", id).single()).data as { status: string }).status;
+    const v1 = await cand(1), v2 = await cand(2);
+    await check("po", "reads the model registry", async () => ((await rows(po.db.from("model_registry").select("id").eq("id", v1)))?.length ? true : "missing"));
+    await check("po", "cannot approve models (no portal_admin)", () => flFails(po.db.rpc("fl_decide", { p_id: v1, p_status: "approved" })));
+    await check("po", "cannot edit the registry directly", async () =>
+      ((await po.db.from("model_registry").update({ status: "approved" }).eq("id", v1).select("id")).data?.length ? "edited" : true));
+    await check("admin", "approves, supersedes and rolls back", async () => {
+      await adm.db.rpc("fl_decide", { p_id: v1, p_status: "approved" });
+      await adm.db.rpc("fl_decide", { p_id: v2, p_status: "approved" });
+      const mid = [await status(v1), await status(v2)].join();
+      await adm.db.rpc("fl_rollback", { p_program: tpid });
+      const end = [await status(v1), await status(v2)].join();
+      return mid === "retired,approved" && end === "approved,retired" ? true : `after approvals ${mid}; after rollback ${end}`;
+    });
+    await check("admin", "cannot re-decide a decided model", () => flFails(adm.db.rpc("fl_decide", { p_id: v2, p_status: "approved" })));
+    await admin.from("model_registry").delete().eq("program_id", tpid);
+    await admin.from("fl_programs").delete().eq("id", tpid);
+  }
+}
+
 // ── Phase 8a: AIRA retrieval, rules and logs ─────────────────────────────
 {
   const a = p["acme-admin"], po = p.po, adm = p.admin;

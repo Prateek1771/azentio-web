@@ -8,6 +8,7 @@ import { EmptyState, Section } from "@/components/portal/primitives";
 import { Panel, PortalBand, Tile, roleLabel } from "@/components/portal/portal";
 import { ContributionList } from "@/components/portal/contributions";
 import { type Contribution, NOTIFY, STATE } from "@/lib/contributions/model";
+import { FlProgrammePanel } from "./fl-panel";
 
 export const metadata: Metadata = { title: "Client workspace" };
 
@@ -106,6 +107,8 @@ async function ClientHome({ params }: { params: Promise<{ org: string }> }) {
               )}
             </Panel>
           </div>
+
+          <FlProgrammePanel orgId={org.org_id} slug={org.slug} isAdmin={isAdmin} />
         </div>
       </Section>
     </>

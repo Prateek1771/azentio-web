@@ -176,6 +176,28 @@ await upsert(
   }
 }
 
+// Federated learning programme (P2). The demo clients start enrolled once; a withdrawal made in the
+// UI survives re-seeding, so enrolments are only created when the programme has none.
+const [fl] = await upsert(
+  "fl_programs",
+  [{
+    slug: "sme-cashflow-stress",
+    name: "SME cash-flow stress (federated)",
+    task: "Predict 90-day cash-flow stress for an SME borrower from 12 months of inflow shape, sector, size and tenure.",
+    description: "Each client trains on its own synthetic portfolio; only clipped weight updates reach the coordinator.",
+    min_participants: 2,
+  }],
+  "slug",
+);
+const { count: enrolled } = await db.from("fl_enrollments").select("org_id", { count: "exact", head: true }).eq("program_id", fl.id);
+if (!enrolled) {
+  const { error } = await db.from("fl_enrollments").insert(
+    ["acme-bank", "borealis-finance", "cedar-credit"].map((s) => ({ program_id: fl.id, org_id: org[s], consent_train: true })),
+  );
+  if (error) throw new Error(`fl_enrollments: ${error.message}`);
+  console.log("✓ fl_enrollments       3");
+}
+
 console.log("\nPersonas (sign in with OTP; access binds automatically):");
 for (const [a] of staff) console.log(`  staff   ${persona(a)}`);
 for (const s of ["acme", "borealis", "cedar"]) console.log(`  client  ${persona(`${s}-admin`)}  ${persona(`${s}-member`)}`);

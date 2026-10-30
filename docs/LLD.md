@@ -18,7 +18,7 @@ azentio/
   migrations/            <timestamp>_core.sql, _rls.sql, _lifecycle.sql, _audit.sql, _search.sql (InsForge CLI format)
   functions/             withdraw-purge, embed-published, outbox-worker, cluster-themes, aira-metrics
   evals/                 taxonomy.yaml, aira_gold.jsonl, run_gold.ts
-  fl/                    data_gen.py, model.py, run.py, eval.py, registry.py, THREAT_MODEL.md
+  fl/                    data_gen.py, model.py, run.py, eval.py, test_fl.py, THREAT_MODEL.md
   docs/                  PRD, HLD, LLD, USER_FLOWS, REQUIREMENTS, BUILD_PHASES, design/
 ```
 
@@ -153,11 +153,19 @@ Runs through a SECURITY DEFINER function that returns only suppressed aggregates
 Regexes: card numbers (Luhn), IBAN, account-number-like 9–18 digit runs, emails, phones, national-ID patterns, a "confidential" keyword list, and currency amounts with a precise date. Hits are stored in `pii_flags` → badge in the moderator UI. The LLM second pass adds `{field, span, reason}` suggestions only.
 
 ## 3.10 Federated learning module
-- `data_gen.py`: 3 synthetic SME portfolios with different seasonality skews. Features: monthly inflows (12), sector, size, tenure. Label: 90-day cash-flow stress.
-- `model.py`: small MLP (PyTorch). `client.py`: Flower NumPyClient that trains locally, clips the update norm to C, returns weights + n.
-- `coordinator.py`: FedAvg weighted by n, validates update shapes and norms (rejects outliers), min 2 of 3 participants, simulates dropout of client C in round 3.
-- `eval.py`: global holdout; compares federated vs a local-only model per client vs a centralised oracle (labelled "for reference only").
-- Sync: per-round metadata to `fl_rounds`; the final model goes to `model_registry` as `candidate`; the admin approves in the UI; rollback re-pins the previous approved version.
+Pure numpy, no ML framework.
+- `data_gen.py`: 3 synthetic SME portfolios, each skewed toward one sector with its own seasonality and size band. Features: monthly inflow shape (12), sector one-hot (4), size, tenure. Label: 90-day cash-flow stress.
+- `model.py`: logistic regression (19 params) trained by full-batch gradient descent.
+- `run.py`:
+  - Each client is an object that holds its own data and returns only `(delta, n)`.
+  - The coordinator runs FedAvg weighted by n. It validates update shapes and finiteness, rejects outliers (norm > 3× the median of the other updates), clips the norm to C, and requires at least 2 participants per round.
+  - `--dropout cedar-credit@3` and `--poison borealis-finance@2` simulate a dropped and a malicious client.
+- `eval.py`: global holdout; compares federated vs a local-only model per client vs a centralised oracle (labelled "for reference only"), plus the skew explanation.
+- Sync (`web/scripts/fl-run.mts`, `npm run fl`):
+  - Runs only the orgs with an active enrolment.
+  - Writes metadata to `fl_runs` / `fl_rounds` and registers the model in `model_registry` as a `candidate`.
+  - A portal admin approves or rejects it at `/e/fl` (`fl_decide`). `fl_rollback` re-pins the previously approved version.
+- Client admins opt in or withdraw (`fl_enroll` / `fl_withdraw`) from `/c/[org]`. Threat model: `fl/THREAT_MODEL.md`.
 
 ## 3.11 Testing
 - Playwright: access matrix (8 personas × resource types, including direct API/media/URL guessing), lifecycle, withdrawal timer, aggregation suppression, escalation attempts
