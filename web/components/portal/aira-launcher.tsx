@@ -1,18 +1,81 @@
 "use client";
 
-import { useState } from "react";
-import { X } from "lucide-react";
+import { Fragment, useRef, useState } from "react";
+import Link from "next/link";
+import { Loader2, Send, ThumbsDown, ThumbsUp, TriangleAlert, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-// ponytail: shell only — the RAG endpoint and chat UI land in Phase 8 (/api/aira).
+type Source = { n: number; id: string; kind: "shared" | "theme"; title: string };
+type Reply = { interactionId: string | null; verdict: "answered" | "refused" | "blocked" | "no_evidence"; answer?: string; message?: string; sources: Source[] };
+type Turn = { q: string; r?: Reply; error?: boolean; feedback?: string };
+
+const EXAMPLES = ["How do seasonal cash-flow cycles affect SME assessments?", "What are the limitations of the seasonality evidence?"];
+const DISCLAIMER = "Synthesised from approved, de-identified contributions. Not advice.";
+const href = (s: Source) => (s.kind === "shared" ? `/learning/${s.id}` : "/learning/themes");
+
+// [S1] markers become links to the cited source; the text itself is rendered as plain text.
+function Cited({ text, sources }: { text: string; sources: Source[] }) {
+  return (
+    <>
+      {text.split(/\n\s*\n/).map((p, i) => (
+        <p key={i} className="mt-2 first:mt-0">
+          {p.split(/(\[S\d+\])/g).map((part, j) => {
+            const n = /^\[S(\d+)\]$/.exec(part)?.[1];
+            const s = n ? sources.find((x) => x.n === Number(n)) : undefined;
+            return s ? (
+              <Link key={j} href={href(s)} className="mx-0.5 rounded bg-green-050 px-1 text-[11px] font-bold text-green-700 hover:underline" title={s.title}>
+                S{s.n}
+              </Link>
+            ) : (
+              <Fragment key={j}>{part}</Fragment>
+            );
+          })}
+        </p>
+      ))}
+    </>
+  );
+}
+
 export function AiraLauncher() {
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [signedOut, setSignedOut] = useState(false);
+  const end = useRef<HTMLDivElement>(null);
+
+  async function ask(question: string) {
+    if (!question.trim() || busy) return;
+    setBusy(true);
+    setQ("");
+    setTurns((t) => [...t, { q: question }]);
+    try {
+      const res = await fetch("/api/aira", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }) });
+      if (res.status === 401) setSignedOut(true);
+      const r = (await res.json()) as Reply;
+      setTurns((t) => t.map((x, i) => (i === t.length - 1 ? { ...x, r } : x)));
+    } catch {
+      setTurns((t) => t.map((x, i) => (i === t.length - 1 ? { ...x, error: true } : x)));
+    } finally {
+      setBusy(false);
+      requestAnimationFrame(() => end.current?.scrollIntoView({ block: "end" }));
+    }
+  }
+
+  async function rate(i: number, feedback: "up" | "down" | "correction") {
+    const id = turns[i].r?.interactionId;
+    if (!id) return;
+    setTurns((t) => t.map((x, j) => (j === i ? { ...x, feedback } : x)));
+    await fetch("/api/aira", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, feedback }) }).catch(() => {});
+  }
+
   return (
     <>
       {open && (
         <div
           role="dialog"
           aria-label="AIRA assistant"
-          className="fixed right-6 bottom-24 z-[60] flex h-[min(510px,calc(100dvh-140px))] w-[min(380px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-[#e1e5ee] bg-white shadow-panel max-sm:right-4"
+          className="fixed right-6 bottom-24 z-[60] flex h-[min(560px,calc(100dvh-140px))] w-[min(400px,calc(100vw-32px))] flex-col overflow-hidden rounded-2xl border border-[#e1e5ee] bg-white shadow-panel max-sm:right-4"
         >
           <div className="on-dark flex items-center justify-between bg-navy px-5 py-4 text-white">
             <div>
@@ -23,12 +86,85 @@ export function AiraLauncher() {
               <X className="size-5" aria-hidden />
             </button>
           </div>
-          <div className="flex flex-1 flex-col justify-center gap-3 p-6 text-center">
-            <p className="text-[19px] font-bold text-ink">AIRA is getting ready.</p>
-            <p className="text-sm leading-[1.65] text-slate">
-              Sign in to ask questions about approved market observations and themes. Every answer will link to its evidence.
-            </p>
-          </div>
+
+          {signedOut ? (
+            <div className="flex flex-1 flex-col justify-center gap-3 p-6 text-center">
+              <p className="text-[19px] font-bold text-ink">Sign in to ask AIRA</p>
+              <p className="text-sm leading-[1.65] text-slate">AIRA answers questions about approved market observations and themes, and links every answer to its evidence.</p>
+              <Link href="/login" className="mx-auto rounded-[5px] bg-green px-5 py-3 text-sm font-bold text-on-green">Sign in</Link>
+            </div>
+          ) : (
+            <>
+              <div className="flex-1 overflow-y-auto px-4 py-4 text-sm" aria-live="polite">
+                {!turns.length && (
+                  <div className="grid gap-2">
+                    <p className="text-slate">Ask about patterns in approved, de-identified contributions. Try:</p>
+                    {EXAMPLES.map((e) => (
+                      <button key={e} type="button" onClick={() => ask(e)} className="rounded-lg border border-line px-3 py-2 text-left hover:border-green-700">{e}</button>
+                    ))}
+                  </div>
+                )}
+                {turns.map((t, i) => (
+                  <div key={i} className="mb-4 grid gap-2">
+                    <p className="ml-8 rounded-xl rounded-br-sm bg-navy px-3 py-2 text-white">{t.q}</p>
+                    {!t.r && !t.error && <p className="inline-flex items-center gap-2 text-slate"><Loader2 className="size-4 animate-spin" aria-hidden /> Checking the approved evidence…</p>}
+                    {t.error && <p className="text-orange-800">Something went wrong. Please try again.</p>}
+                    {t.r && (
+                      <div data-verdict={t.r.verdict} className={cn("mr-4 rounded-xl rounded-bl-sm border px-3 py-2.5 leading-[1.6]", t.r.verdict === "answered" ? "border-line bg-light" : "border-amber-200 bg-amber-50")}>
+                        {t.r.verdict === "answered" ? (
+                          <Cited text={t.r.answer ?? ""} sources={t.r.sources} />
+                        ) : (
+                          <p className="flex gap-2"><TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />{t.r.message}</p>
+                        )}
+                        {t.r.verdict === "no_evidence" && <Link href="/learning" className="mt-2 inline-block text-xs font-bold text-green-700 hover:underline">Browse the shared feed</Link>}
+                        {t.r.sources.length > 0 && t.r.verdict !== "refused" && (
+                          <ul className="mt-3 grid gap-1 border-t border-line pt-2 text-xs" aria-label="Sources">
+                            {t.r.sources.map((s) => (
+                              <li key={s.n}><Link href={href(s)} className="hover:underline"><strong>S{s.n}</strong> {s.title}</Link></li>
+                            ))}
+                          </ul>
+                        )}
+                        {t.r.verdict === "answered" && (
+                          <>
+                            <p className="mt-2 text-[11px] text-slate">{DISCLAIMER}</p>
+                            <div className="mt-2 flex items-center gap-1 text-slate">
+                              {t.feedback ? (
+                                <span role="status" className="text-xs font-bold text-green-700">Thanks for the feedback.</span>
+                              ) : (
+                                <>
+                                  <button type="button" aria-label="Helpful" onClick={() => rate(i, "up")} className="rounded p-1 hover:text-green-700"><ThumbsUp className="size-4" aria-hidden /></button>
+                                  <button type="button" aria-label="Not helpful" onClick={() => rate(i, "down")} className="rounded p-1 hover:text-orange-700"><ThumbsDown className="size-4" aria-hidden /></button>
+                                  <button type="button" onClick={() => rate(i, "correction")} className="ml-1 text-xs font-bold hover:text-orange-700">That&rsquo;s wrong</button>
+                                </>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <div ref={end} />
+              </div>
+              <form onSubmit={(e) => { e.preventDefault(); ask(q); }} className="flex items-end gap-2 border-t border-line p-3">
+                <label className="sr-only" htmlFor="aira-q">Ask AIRA</label>
+                <textarea
+                  id="aira-q"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(q); } }}
+                  rows={2}
+                  maxLength={1000}
+                  placeholder="Ask about approved shared learning…"
+                  className="min-h-[44px] flex-1 resize-none rounded-md border border-line-strong px-3 py-2 text-sm outline-none focus:border-green-700"
+                />
+                <button type="submit" disabled={busy || !q.trim()} aria-label="Send question" className="grid size-11 place-items-center rounded-md bg-green text-navy disabled:opacity-50">
+                  {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Send className="size-4" aria-hidden />}
+                </button>
+              </form>
+              <p className="px-3 pb-2 text-right text-[10px] text-slate">{q.length}/1000 · Don&rsquo;t include personal or client-identifying details.</p>
+            </>
+          )}
         </div>
       )}
       <button

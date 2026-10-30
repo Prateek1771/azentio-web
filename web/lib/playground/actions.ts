@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import OpenAI from "openai";
+import { chat } from "@/lib/ai/gateway";
 import { requireEmployee, requireOrg, requireUser } from "@/lib/authz";
 import { createInsForgeServerClient } from "@/lib/insforge/server";
 import { engines, type EngineOutput } from "./engines";
@@ -23,19 +23,13 @@ const NEWSROOM_SYSTEM = `You draft a short, editable LinkedIn-style post (80-120
 based ONLY on the provided synthetic headlines. Mark it clearly as a draft. No invented facts, figures, company names or promises.`;
 
 async function narrate(offering: string, scenario: unknown, output: EngineOutput): Promise<{ narrative?: string; aiNotice?: string }> {
-  if (!process.env.OPENAI_API_KEY) return { aiNotice: "AI assistance isn't configured. Showing the deterministic result only." };
+  if (!process.env.OPENROUTER_API_KEY) return { aiNotice: "AI assistance isn't configured. Showing the deterministic result only." };
   try {
-    // OPENAI_BASE_URL optionally points at an OpenAI-compatible gateway (e.g. OpenRouter).
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, baseURL: process.env.OPENAI_BASE_URL || undefined, timeout: 20_000, maxRetries: 1 });
-    const res = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
-      messages: [
-        { role: "system", content: offering === "persona-newsroom" ? NEWSROOM_SYSTEM : SYSTEM },
-        // Synthetic scenario + deterministic output only; never user free text or real data.
-        { role: "user", content: JSON.stringify({ offering, scenario, result: output }) },
-      ],
-    });
-    const text = res.choices[0]?.message?.content?.trim();
+    // Free InsForge Model Gateway. Synthetic scenario + deterministic output only; never user free text or real data.
+    const { text } = await chat([
+      { role: "system", content: offering === "persona-newsroom" ? NEWSROOM_SYSTEM : SYSTEM },
+      { role: "user", content: JSON.stringify({ offering, scenario, result: output }) },
+    ], { maxTokens: 350 });
     return text ? { narrative: text } : { aiNotice: "The AI assistant returned nothing. Showing the deterministic result only." };
   } catch {
     return { aiNotice: "The AI assistant is unavailable right now. Showing the deterministic result only." };

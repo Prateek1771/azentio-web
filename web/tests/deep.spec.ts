@@ -70,7 +70,7 @@ test("no console errors or hydration warnings on public pages", async ({ page })
 test("no console errors on portal pages for each role", async ({ browser }) => {
   test.setTimeout(180_000); // five roles, ~25 pages
   const plan: [RegExp, string[]][] = [
-    [/Portal admin/, ["/s", "/account", "/e", "/s/outbox"]],
+    [/Portal admin/, ["/s", "/account", "/e", "/s/outbox", "/s/aira"]],
     [/Content publisher/, ["/s/publisher", "/s/publisher?tab=recordings", "/s/publisher?tab=homepage", "/s/publisher?tab=clients"]],
     [/Product owner/, ["/e", "/e/playground", "/e/playground/document-intelligence", "/e/live", "/s/insights", "/s/insights/ideas/new", "/e/teams", "/e/experiments", "/e/library", "/e/library/new"]],
     [/Learning moderator/, ["/s/moderation", "/s/moderation?tab=published", "/s/reports", "/learning"]],

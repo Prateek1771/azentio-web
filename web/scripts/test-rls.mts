@@ -687,6 +687,35 @@ if (adm) {
   }
 }
 
+// ── Phase 8a: AIRA retrieval, rules and logs ─────────────────────────────
+{
+  const a = p["acme-admin"], po = p.po, adm = p.admin;
+  await check("anon", "cannot run AIRA retrieval", async () => ((await anonDb.rpc("match_shared", { p_query: "seasonal", p_limit: 5 })).data as unknown[] | null)?.length ? "LEAK" : true);
+  if (a) {
+    await check("acme-admin", "AIRA retrieval returns only live approved copies", async () => {
+      const got = ((await a.db.rpc("match_shared", { p_query: "seasonal cash flow SME", p_limit: 10 })).data ?? []) as { id: string }[];
+      if (!got.length) return "nothing retrieved";
+      const { data } = await admin.from("shared_contributions").select("id").in("id", got.map((g) => g.id)).eq("status", "live");
+      return data?.length === got.length ? true : "non-live copy retrieved";
+    });
+    await check("acme-admin", "cannot read guardrail rules (they list client names)", () => denied(a.db.from("guardrail_rules").select("key")));
+    await check("acme-admin", "cannot read guardrail events", () => denied(a.db.from("guardrail_events").select("id")));
+    await check("acme-admin", "gets no AIRA metrics", async () => (((await a.db.rpc("aira_metrics", { p_days: 14 })).data as unknown[] | null)?.length ? "visible" : true));
+    if (po) {
+      const { data: row } = await admin.from("aira_interactions").insert([{ user_id: po.uid, question: `${TAG} private question`, verdict: "answered" }]).select("id").single();
+      const iid = (row as { id: string }).id;
+      await check("acme-admin", "cannot read someone else's AIRA questions", () => denied(a.db.from("aira_interactions").select("id").eq("id", iid)));
+      await check("acme-admin", "cannot rate someone else's answer", async () =>
+        ((await a.db.from("aira_interactions").update({ feedback: "down" }).eq("id", iid).select("id")).data?.length ? "rated" : true));
+      await check("po", "rates their own answer", async () => ((await po.db.from("aira_interactions").update({ feedback: "up" }).eq("id", iid).select("id")).data?.length ? true : "not rated"));
+      if (adm) await check("admin", "sees AIRA metrics", async () => (((await adm.db.rpc("aira_metrics", { p_days: 1 })).data as unknown[] | null)?.length ? true : "no metrics"));
+      await admin.from("aira_interactions").delete().eq("id", iid);
+    }
+    if (po) await check("po", "cannot change guardrail rules", async () =>
+      ((await po.db.from("guardrail_rules").update({ enabled: false }).eq("key", "aira_enabled").select("key")).data?.length ? "switched AIRA off" : true));
+  }
+}
+
 // ── cleanup (admin key) ──────────────────────────────────────────────────
 // emails this run queued for demo personas (returns, publishes, idea updates) are test noise, never sent
 await admin.from("outbox").delete().gte("created_at", STARTED).like("to_email", INBOX.replace("@", "+%@")).in("status", ["queued", "retry"]);
