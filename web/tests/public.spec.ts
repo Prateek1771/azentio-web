@@ -77,6 +77,20 @@ test("capability flip cards toggle by click and keyboard", async ({ page }) => {
   await expect(card).toHaveAttribute("aria-pressed", "false");
 });
 
+// Touch phones don't flip (3D inside a button rendered only the front on iOS): details sit under the title.
+test("capability cards show their details on touch phones without flipping", async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await ctx.newPage();
+  await page.goto("/");
+  const card = page.getByRole("button", { name: /^Intelligent Decisioning:/ });
+  await card.scrollIntoViewIfNeeded();
+  const subtitle = await card.getByText("Turn policies, evidence, and data into informed recommendations.").boundingBox();
+  const point = await card.getByText("Evaluate applications vs. configurable policies").boundingBox();
+  expect(subtitle && point && point.y > subtitle.y + subtitle.height).toBeTruthy();
+  expect(await card.locator("span.bg-navy").evaluate((el) => getComputedStyle(el).transform)).toBe("none");
+  await ctx.close();
+});
+
 test("connect: prefill from URL, validation keeps input, valid submit is stored", async ({ page }) => {
   await page.goto("/connect?interest=demo&product=riva");
   await expect(page.getByLabel("I'm interested in")).toHaveValue("demo");
