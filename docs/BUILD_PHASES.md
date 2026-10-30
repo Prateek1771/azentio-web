@@ -25,7 +25,9 @@ Each phase lists the deliverables, the requirement IDs (from the PRD) it covers,
   - Per-operation policies and column grants.
   - Append-only `audit_log` via triggers.
   - Seed script with ≥ 3 synthetic client orgs, an employee/moderator (your email on the allow-list), and client admins/members.
-  - SQL RLS tests per persona.
+  - Provisioning is keyed by **email** (`employee_allowlist`, `provisioned_access`). `claim_provisioned_access()` binds it to the signed-in, *verified* user, so nothing is ever written to `auth`.
+  - AIRA guardrail tables + baseline rules (`guardrail_rules`, `aira_interactions`, `guardrail_events`). See [AIRA guardrails](AIRA_GUARDRAILS.md).
+  - RLS test matrix (`npm run test:rls`) that sends real API requests as anon and as each persona. Raw SQL can't switch roles on InsForge, so it uses verified demo accounts.
 - **Covers:** AUTH-01/02/03/08
 - **Exit:** the RLS test matrix passes. Client A can never read client B rows, and a moderator can't read drafts.
 
@@ -38,6 +40,7 @@ Each phase lists the deliverables, the requirement IDs (from the PRD) it covers,
   - Active-workspace cookie + switcher.
   - `lib/authz.ts` guards (`requireUser`, `requireMembership`, `requireGrant`) used by every route group.
   - Sign-out.
+  - **Demo login buttons** for the admin roles (portal admin, moderator, publisher, product owner, client admins). They sign in on the server with passwords from `.env.local` and only appear when `DEMO_LOGIN_ENABLED=true`.
 - **Covers:** AUTH-04/05/06/07
 - **Exit:**
   - An uninvited external email gets no membership.
@@ -113,6 +116,7 @@ Each phase lists the deliverables, the requirement IDs (from the PRD) it covers,
 - **Exit:** escalation attempts are blocked by RLS, and the email retry doesn't double-send.
 
 ## Phase 8: AIRA & AI assists
+- **Guardrails:** implement G1–G15 from [AIRA guardrails](AIRA_GUARDRAILS.md). They're layered, deterministic first, and fail closed.
 - **Tasks:**
   - `embed-published` function.
   - `/api/aira`: RLS-scoped pgvector retrieval → OpenAI → citation ⊆ retrieved IDs + red-line regex guard → streamed answer with source cards, or "not enough evidence".

@@ -48,6 +48,7 @@ docs/         PRD, HLD, LLD, user flows, requirements, build phases, design syst
 | [LLD](docs/LLD.md) | Schema, state machine, RLS, API surface, AIRA / purge / FL design |
 | [User flows](docs/USER_FLOWS.md) | Mermaid flows per persona |
 | [Build phases](docs/BUILD_PHASES.md) | Phase-by-phase plan with exit criteria |
+| [AIRA guardrails](docs/AIRA_GUARDRAILS.md) | Layered chatbot guardrails (G1–G15), pipeline, data contract |
 | [Design system](docs/design/DESIGN_SYSTEM.md) | Tokens, components, voice (from the reference prototype) |
 | [Routes](docs/design/ROUTES.md) | Prototype sitemap → our route map |
 
@@ -58,7 +59,7 @@ Requirements: Node 20+, npm, Python 3.11+ (for `fl/`), an InsForge project, an O
 cd web
 npm install
 cp .env.example .env.local   # fill in the values below
-npm run dev                  # http://localhost:3000
+npm run dev                  # http://localhost:3100
 ```
 
 | Variable | Where it's used |
@@ -73,14 +74,31 @@ Database: `npx -y @insforge/cli db migrations up --all`, then `npm run seed` (sy
 
 > Never commit `.insforge/`, `.mcp.json` or `.env*`. They hold admin keys and are git-ignored.
 
-## Demo accounts (synthetic)
-The seed creates 3 fictional client organisations, an employee and moderator account (your allow-listed email), and client admins/members. All data is synthetic.
+## Demo personas (synthetic)
+The seed creates the Azentio org plus 3 fictional client organisations: Acme Bank, Borealis Finance and Cedar Credit Union.
+- Each persona is a plus-address on one demo inbox (`DEMO_INBOX`), for example `hitliprateek5+moderator@gmail.com`.
+- Access is provisioned by email and binds on the first verified sign-in.
+
+| Persona | Org | Grants |
+|---|---|---|
+| `employee` | Azentio | none |
+| `moderator` | Azentio | moderate |
+| `po` | Azentio | product_owner |
+| `publisher` | Azentio | publish_media |
+| `admin` | Azentio | portal_admin, manage_roles, invite |
+| `acme-admin`, `borealis-admin`, `cedar-admin` | their client org | client admin |
+| `acme-member`, `borealis-member`, `cedar-member` | their client org | client member |
+| `multi` | Acme + Borealis | client member in both |
+
+The admin-role personas also get demo passwords (`npm run demo:create`, then `npm run demo:verify <alias> <code>`), which are stored only in `web/.env.local`. They power the one-click demo-login buttons and the RLS tests.
 
 ## Scripts (once built)
 | Command | Purpose |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js |
-| `npm run seed` | Load synthetic data |
+| `npm run seed` | Load synthetic data (idempotent) |
+| `npm run test:rls` | RLS matrix as anon + each persona through the real API |
+| `npm run demo:create` / `demo:verify` | Create and verify demo-login accounts |
 | `npm run test:e2e` | Playwright access matrix + lifecycle tests |
 | `npm run test:aira` | AIRA gold-set evaluation |
 | `python -m fl.run --rounds 5` | Federated-learning demo |

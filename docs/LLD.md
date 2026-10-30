@@ -130,6 +130,8 @@ audit_log: INSERT via trigger only; SELECT has_grant('portal_admin')
 | `POST /api/aira` | {question} | auth, rate-limit 20/h | streamed, guarded answer |
 
 ## 3.6 AIRA pipeline
+The full guardrail specification (G1–G15) is in [AIRA_GUARDRAILS.md](AIRA_GUARDRAILS.md).
+
 1. Embed the question (`OPENAI_EMBED_MODEL`).
 2. `select … from shared_contributions order by embedding <=> $1 limit 8` with the **user's** RLS client. Results below the similarity threshold are dropped.
 3. If fewer than 2 sources → "Not enough approved evidence" + feed link.

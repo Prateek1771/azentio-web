@@ -8,7 +8,12 @@
     "start": "next start -p 3100",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "seed": "node --env-file=.env.local --experimental-strip-types scripts/seed.mts",
+    "demo:create": "node --env-file=.env.local --experimental-strip-types scripts/demo-accounts.mts create",
+    "demo:verify": "node --env-file=.env.local --experimental-strip-types scripts/demo-accounts.mts verify",
+    "demo:resend": "node --env-file=.env.local --experimental-strip-types scripts/demo-accounts.mts resend",
+    "test:rls": "node --env-file=.env.local --experimental-strip-types scripts/test-rls.mts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
