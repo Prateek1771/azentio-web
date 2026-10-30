@@ -30,6 +30,9 @@ async function Review({ params, searchParams }: Props) {
   if (!data) notFound(); // RLS: drafts, private and org-only items don't exist for moderators
   const c = data as Contribution & { offerings: { name: string } | null };
   const consent = (consentRows?.[0] ?? null) as Consents | null;
+  // duplicate detection (trigram, deterministic): approved copies that read like this proposal
+  const { data: dupRows } = c.state === "submitted" ? await db.rpc("similar_shared", { p_text: `${c.title} ${c.body}`, p_limit: 5 }) : { data: [] };
+  const dups = ((dupRows ?? []) as { id: string; title: string; similarity: number }[]).filter((d) => d.similarity >= 0.35);
   const done = (await searchParams).done;
 
   return (
@@ -82,6 +85,20 @@ async function Review({ params, searchParams }: Props) {
           </Panel>
 
           <div className="grid content-start gap-6">
+            {dups.length > 0 && (
+              <section aria-label="Possible duplicates" className="rounded-[10px] border border-amber-300 bg-amber-50 p-5 text-sm">
+                <p className="font-bold text-amber-900">Possible duplicates already in the shared feed</p>
+                <ul className="mt-2 grid grid-cols-1 gap-1">
+                  {dups.map((d) => (
+                    <li key={d.id} className="min-w-0 truncate">
+                      <a href={`/learning/${d.id}`} className="font-bold text-green-700 hover:underline">{d.title}</a>{" "}
+                      <span className="text-xs text-amber-900">({Math.round(d.similarity * 100)}% similar)</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-xs text-amber-900">Consider linking it to the same theme rather than publishing a near-copy.</p>
+              </section>
+            )}
             {c.state === "submitted" && (
               <Panel title="Shared copy (what the community will see)">
                 <SharedCopyForm

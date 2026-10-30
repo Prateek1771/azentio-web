@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState } from "react";
-import { Loader2 } from "lucide-react";
+import { useActionState, useRef, useState, useTransition } from "react";
+import { redactionSuggestion } from "@/lib/ai/assist-actions";
+import type { Redaction } from "@/lib/ai/assists";
+import { Loader2, Sparkles } from "lucide-react";
 import { Field, FormAlert, fieldCls } from "@/components/site/form-bits";
 import { type ActionState, moderate, publishShared } from "@/lib/learning/actions";
 import { scanPii, piiLabel } from "@/lib/contributions/pii";
@@ -21,14 +23,17 @@ export function SharedCopyForm({ id, draft, attribution }: { id: string; draft: 
   const [state, action, pending] = useActionState(publishShared.bind(null, id), {} as ActionState);
   const v = (k: keyof Draft) => state.values?.[k] ?? draft[k];
   const flags = scanPii(`${v("title")} ${v("body")}`);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   return (
     <form action={action} className="grid gap-4">
       <FormAlert error={state.error} />
+      <RedactionAssist id={id} onUse={(t, b) => { titleRef.current!.value = t; bodyRef.current!.value = b; }} />
       <Field label="Shared title" name="title">
-        <input id="title" name="title" defaultValue={v("title")} maxLength={140} className={fieldCls} />
+        <input ref={titleRef} id="title" name="title" defaultValue={v("title")} maxLength={140} className={fieldCls} />
       </Field>
       <Field label="Shared text" name="body" hint="Remove names, identifiers and anything that points to a specific client.">
-        <textarea id="body" name="body" defaultValue={v("body")} rows={8} maxLength={5000} className={fieldCls} />
+        <textarea ref={bodyRef} id="body" name="body" defaultValue={v("body")} rows={8} maxLength={5000} className={fieldCls} />
       </Field>
       <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
         <Field label="Industry" name="industry">
@@ -82,5 +87,40 @@ export function ModerationActions({ id, state: st }: { id: string; state: string
         {["submitted", "returned", "published", "unpublished"].includes(st) && step("withdrawn", "Withdraw & purge", true)}
       </div>
     </form>
+  );
+}
+
+// Suggestion only: the moderator reviews it, can copy it into the shared copy, and still edits before publishing.
+function RedactionAssist({ id, onUse }: { id: string; onUse: (title: string, body: string) => void }) {
+  const [pending, start] = useTransition();
+  const [res, setRes] = useState<{ error?: string; suggestion?: Redaction } | null>(null);
+  return (
+    <div className="grid gap-3 rounded-[10px] border border-dashed border-line-strong bg-light p-4 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="font-bold">AI redaction review</p>
+        <button type="button" disabled={pending} onClick={() => start(async () => setRes(await redactionSuggestion(id)))} className="inline-flex items-center gap-1.5 rounded-[5px] border border-line-strong bg-white px-3 py-1.5 text-xs font-bold disabled:opacity-60">
+          {pending ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Sparkles className="size-3.5" aria-hidden />} Suggest redaction
+        </button>
+      </div>
+      {res?.error && <p role="alert" className="text-orange-800">{res.error}</p>}
+      {res?.suggestion && (
+        <div role="status" className="grid gap-2">
+          {res.suggestion.flags.length > 0 && (
+            <ul className="grid gap-1 text-xs">
+              {res.suggestion.flags.map((f, i) => <li key={i}>· <strong>&ldquo;{f.text}&rdquo;</strong>: {f.reason}</li>)}
+            </ul>
+          )}
+          {res.suggestion.residualPii.length > 0 && (
+            <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-900">Still flagged by the deterministic scan: {res.suggestion.residualPii.join(", ")}. Edit before publishing.</p>
+          )}
+          <p className="font-bold">{res.suggestion.title}</p>
+          <p className="whitespace-pre-wrap text-slate">{res.suggestion.body}</p>
+          <button type="button" onClick={() => onUse(res.suggestion!.title, res.suggestion!.body)} className="justify-self-start rounded-[5px] bg-navy px-3 py-1.5 text-xs font-bold text-white">
+            Use this in the shared copy
+          </button>
+          <p className="text-xs text-slate">AI-generated suggestion. You remain responsible for what is published.</p>
+        </div>
+      )}
+    </div>
   );
 }

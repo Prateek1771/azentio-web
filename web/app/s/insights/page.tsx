@@ -27,7 +27,9 @@ async function Insights() {
 
   return (
     <>
-      <PortalBand eyebrow="Staff console · Insights" title="Themes & ideas" lead="Group approved contributions into themes, then turn themes into improvement ideas with an audited status and an audience-safe update for contributors." />
+      <PortalBand eyebrow="Staff console · Insights" title="Themes & ideas" lead="Group approved contributions into themes, then turn themes into improvement ideas with an audited status and an audience-safe update for contributors.">
+        <Link href="/s/insights/suggest" className="rounded-[5px] border border-white/40 px-5 py-3 text-sm font-bold hover:border-green hover:text-green">AI assists</Link>
+      </PortalBand>
       <Section className="py-12">
         <div className="grid grid-cols-2 gap-6 max-[959px]:grid-cols-1">
           <Panel title="Themes" action={<Link href="/s/insights/themes/new" className={add}><Plus className="size-3.5" aria-hidden /> New theme</Link>}>
