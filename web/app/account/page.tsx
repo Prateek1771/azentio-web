@@ -26,7 +26,7 @@ async function AccountDetails() {
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
           <Eyebrow>Signed in</Eyebrow>
-          <h1 className="h-section mt-3">{auth.user.email}</h1>
+          <h1 className="h-section mt-3 break-all">{auth.user.email}</h1>
         </div>
         <form action={signOut}>
           <button className="rounded-[5px] border border-line-strong px-5 py-3 text-sm font-bold hover:border-green-700 hover:text-green-700">
