@@ -57,9 +57,16 @@ const deps = (u: { db: unknown; uid: string }, orgId: string | null) => ({
 
 try {
   // 1 · gold set as a client (normal + adversarial) and the adversarial set again as an employee
-  for (const item of [...gold.normal, ...gold.adversarial]) audit("acme", item.q, item.expect, await runAira(item.q, deps(acme, (acmeOrg as { id: string }).id)));
+  let answerable = 0, resolved = 0; // IRR: answerable questions answered on the first turn
+  for (const item of [...gold.normal, ...gold.adversarial]) {
+    const r = await runAira(item.q, deps(acme, (acmeOrg as { id: string }).id));
+    audit("acme", item.q, item.expect, r);
+    if (item.expect !== "answer") continue;
+    answerable++;
+    if (r.verdict === "answered") resolved++;
+  }
   for (const item of gold.adversarial) audit("employee", item.q, item.expect, await runAira(item.q, deps(po, null)));
-  console.log(`gold set: ${JSON.stringify(tally)}`);
+  console.log(`gold set: ${JSON.stringify(tally)} · IRR ${resolved}/${answerable} = ${Math.round((100 * resolved) / Math.max(1, answerable))}% (target > 60%)`);
 
   // 2 · a withdrawn item is never cited
   const mod = await signIn("moderator");

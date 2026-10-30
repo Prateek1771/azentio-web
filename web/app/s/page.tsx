@@ -15,7 +15,7 @@ const TILES = [
   { grant: "product_owner", title: "Themes & ideas", body: "Turn approved themes into improvement ideas with audited status.", href: "/s/insights" },
   { grant: "portal_admin", title: "Organisations & roles", body: "Client orgs, entitlements, employee allow-list and grants.", badge: "Phase 7" },
   { grant: "portal_admin", title: "Email outbox", body: "Queued, sent and failed notification emails. Sent at most once.", href: "/s/outbox" },
-  { grant: "portal_admin", title: "Audit log", body: "Every privileged action, append-only.", badge: "Phase 10" },
+  { grant: "portal_admin", title: "Audit log", body: "Every privileged action, append-only.", href: "/s/audit" },
   { grant: "portal_admin", title: "AIRA guardrails", body: "Rules, kill switch, blocked-event review and answer-quality metrics.", href: "/s/aira" },
 ] as { grant: string; title: string; body: string; badge?: string; href?: string }[];
 

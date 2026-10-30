@@ -16,6 +16,7 @@
     "test:rls": "node --env-file=.env.local --experimental-strip-types scripts/test-rls.mts",
     "test:outbox": "node --env-file=.env.local --experimental-strip-types scripts/test-outbox.mts",
     "fl": "node --env-file=.env.local --experimental-strip-types scripts/fl-run.mts",
+    "screenshots": "node --experimental-strip-types scripts/screenshots.mts",
     "test:unit": "node --experimental-strip-types lib/playground/engines.test.mts && node --experimental-strip-types lib/contributions/pii.test.mts && node --experimental-strip-types lib/aira/guards.test.mts && node --experimental-strip-types lib/ai/assists.test.mts",
     "test:e2e:prod": "node -e \"process.env.PW_PROD='1';require('child_process').execSync('npx playwright test',{stdio:'inherit',env:process.env})\"",
     "test:aira": "node --env-file=.env.local --experimental-strip-types scripts/test-aira.mts",
