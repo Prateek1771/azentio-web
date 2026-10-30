@@ -19,7 +19,7 @@ flowchart LR
 ## 2.2 Components
 | Component | Responsibility | Tech |
 |---|---|---|
-| Web app | SSR pages, server actions, route handlers, UI | Next.js 15 App Router, TS, Tailwind v4, shadcn/ui, Framer Motion |
+| Web app | SSR pages, server actions, route handlers, UI | Next.js 16 App Router (`proxy.ts`), TS, Tailwind v4, shadcn/ui, Framer Motion |
 | Authz layer | Resolve session → user, active membership, grants. Guard every route. | `lib/authz.ts` + middleware |
 | Data | Tables, RLS, triggers (state machine, audit), FTS, pgvector | InsForge Postgres |
 | Auth | Email OTP, `disableSignup`, sessions | InsForge Auth (SSR integration) |

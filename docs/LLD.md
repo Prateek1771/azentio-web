@@ -3,21 +3,23 @@
 ## 3.1 Repository layout
 ```
 azentio/
-  app/
-    (public)/            page.tsx, offerings/[slug], solutions, media, insights, about, demo, events
-    (auth)/              login, verify, invite/[token], onboarding/terms, workspace/select
-    (employee)/e/        dashboard, playground/[offering], live, experiments, ideas, library, fl
-    (client)/c/[orgSlug]/ dashboard, sandboxes/[offering], observations/{mine,org,new,[id]}, learning, ideas, admin/members
-    (staff)/s/           moderation/{queue,[id]}, reports, publisher/{banners,content,media}, admin/{orgs,users,grants,audit}, themes
-    api/aira/route.ts    api/media/[id]/route.ts   api/outbox/callback/route.ts
-  components/ui (shadcn), components/portal/*
-  lib/ insforge/{server,client}.ts, authz.ts, validation/*.ts (zod), pii-rules.ts, aira/{retrieve,guard,prompt}.ts
-  db/migrations/0001_core.sql 0002_rls.sql 0003_lifecycle.sql 0004_audit.sql 0005_search.sql
-  functions/ withdraw-purge, embed-published, outbox-worker, cluster-themes, aira-metrics
-  evals/ taxonomy.yaml, aira_gold.jsonl, run_gold.ts
-  fl/ coordinator.py, client.py, data_gen.py, model.py, eval.py, docker-compose.yml, THREAT_MODEL.md
-  scripts/seed.ts   tests/{access-matrix,lifecycle,withdrawal,aggregation}.spec.ts
-  docs/ PRD.md HLD.md LLD.md USER_FLOWS.md
+  web/                   Next.js 16 app
+    app/
+      (public)/            page.tsx, products/[slug], solutions, lab, technology, media, insights, about, connect, hackathon/register
+      (auth)/              login, verify, invite/[token], onboarding/terms, workspace/select
+      (employee)/e/        dashboard, playground/[offering], live, experiments, ideas, library, fl
+      (client)/c/[orgSlug]/ dashboard, sandboxes/[offering], observations/{mine,org,new,[id]}, learning, ideas, admin/members
+      (staff)/s/           moderation/{queue,[id]}, reports, publisher/{banners,content,media}, admin/{orgs,users,grants,audit}, themes
+      api/aira/route.ts    api/media/[id]/route.ts   api/outbox/callback/route.ts   api/auth/refresh/route.ts
+    proxy.ts             session refresh (updateSession)
+    components/ui (shadcn), components/portal/*
+    lib/ insforge/{server,client}.ts, authz.ts, validation/*.ts (zod), pii-rules.ts, aira/{retrieve,guard,prompt}.ts
+    scripts/seed.ts   tests/{access-matrix,lifecycle,withdrawal,aggregation}.spec.ts
+  migrations/            <timestamp>_core.sql, _rls.sql, _lifecycle.sql, _audit.sql, _search.sql (InsForge CLI format)
+  functions/             withdraw-purge, embed-published, outbox-worker, cluster-themes, aira-metrics
+  evals/                 taxonomy.yaml, aira_gold.jsonl, run_gold.ts
+  fl/                    data_gen.py, model.py, run.py, eval.py, registry.py, THREAT_MODEL.md
+  docs/                  PRD, HLD, LLD, USER_FLOWS, REQUIREMENTS, BUILD_PHASES, design/
 ```
 
 ## 3.2 Database schema (core)
