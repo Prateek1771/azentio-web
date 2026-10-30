@@ -10,7 +10,8 @@ import { CtaLink, Logo } from "./primitives";
 
 const linkCls = "text-sm font-bold text-white/90 transition-colors hover:text-green";
 
-export function SiteHeader() {
+// `account` is a server-rendered slot (SessionNav) so the header knows who is signed in.
+export function SiteHeader({ account }: { account?: React.ReactNode }) {
   const [open, setOpen] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -88,9 +89,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-4">
-          <Link href="/login" className={cn(linkCls, "max-[959px]:hidden")}>
-            Sign in
-          </Link>
+          <div className="max-[959px]:hidden">{account}</div>
           <CtaLink href="/connect?interest=demo" icon={false} className="py-3 max-[1250px]:hidden">
             Request Demo
           </CtaLink>
@@ -123,8 +122,8 @@ export function SiteHeader() {
                     </ul>
                   </div>
                 ))}
-                <Link href="/login" className="text-lg font-bold">
-                  Sign in
+                <Link href="/account" className="text-lg font-bold">
+                  My account
                 </Link>
                 <CtaLink href="/connect?interest=demo" icon={false}>
                   Request Demo

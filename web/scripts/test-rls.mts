@@ -93,12 +93,45 @@ if (acme) {
     const { data, error } = await acme.db.from("memberships").update({ role: "employee" }).eq("id", (m[0] as { id: string }).id).select();
     return error || !(data as unknown[])?.length ? true : "escalation succeeded";
   });
+  const rpcFails = async (q: PromiseLike<{ error: unknown }>) => ((await q).error ? true : "rpc unexpectedly succeeded");
+  await check("acme-admin", "cannot write invitations directly (RPC only)", () =>
+    failsWrite(acme.db.from("invitations").insert([{ org_id: org["acme-bank"], email: `${TAG}@example.com`, role: "client_member", token_hash: `${TAG}-x`, expires_at: new Date(Date.now() + 864e5).toISOString(), invited_by: acme.uid }])));
   await check("acme-admin", "cannot invite into another org", () =>
-    failsWrite(acme.db.from("invitations").insert([{ org_id: org["borealis-finance"], email: `${TAG}@example.com`, role: "client_member", token_hash: `${TAG}-x`, expires_at: new Date(Date.now() + 864e5).toISOString(), invited_by: acme.uid }])));
+    rpcFails(acme.db.rpc("create_invitation", { p_org: org["borealis-finance"], p_email: `${TAG}@example.com`, p_role: "client_member" })));
   await check("acme-admin", "cannot invite with a platform role", () =>
-    failsWrite(acme.db.from("invitations").insert([{ org_id: org["acme-bank"], email: `${TAG}@example.com`, role: "employee", token_hash: `${TAG}-y`, expires_at: new Date(Date.now() + 864e5).toISOString(), invited_by: acme.uid }])));
-  await check("acme-admin", "can invite a client member into own org", async () =>
-    (await acme.db.from("invitations").insert([{ org_id: org["acme-bank"], email: `${TAG}@example.com`, role: "client_member", token_hash: `${TAG}-ok`, expires_at: new Date(Date.now() + 864e5).toISOString(), invited_by: acme.uid }])).error ? "own-org invite failed" : true);
+    rpcFails(acme.db.rpc("create_invitation", { p_org: org["acme-bank"], p_email: `${TAG}@example.com`, p_role: "employee" })));
+
+  // Invitation lifecycle with real accounts: create → accept once → reuse fails; wrong account; expired.
+  const po = p.po, moderator = p.moderator;
+  if (po && moderator) {
+    const create = async (email: string) => {
+      const { data, error } = await acme.db.rpc("create_invitation", { p_org: org["acme-bank"], p_email: email, p_role: "client_member" });
+      if (error) throw new Error(error.message);
+      return data as string;
+    };
+    const accept = async (who: Db, token: string) => ((await who.rpc("accept_invitation", { p_token: token })).data ?? {}) as { ok?: boolean; reason?: string; org_slug?: string };
+    const tokPo = await create(persona("po"));
+    await check("invitations", "token is returned once and only its hash is stored", async () => {
+      const { data } = await admin.from("invitations").select("token_hash").eq("email", persona("po")).is("used_at", null);
+      return (data ?? []).every((r: { token_hash: string }) => r.token_hash !== tokPo && r.token_hash.length === 64) ? true : "raw token stored";
+    });
+    await check("invitations", "wrong account cannot accept", async () => ((await accept(moderator.db, tokPo)).reason === "wrong_account" ? true : "accepted by wrong account"));
+    await check("invitations", "invited account accepts once", async () => {
+      const r = await accept(po.db, tokPo);
+      return r.ok && r.org_slug === "acme-bank" ? true : `got ${JSON.stringify(r)}`;
+    });
+    await check("invitations", "accepted invite grants membership", async () =>
+      ((await rows(po.db.from("memberships").select("org_id").eq("org_id", org["acme-bank"])))?.length ? true : "no membership"));
+    await check("invitations", "re-using a token fails", async () => ((await accept(po.db, tokPo)).reason === "invalid_or_expired" ? true : "token reused"));
+    const tokExp = await create(`${TAG}-exp@example.com`);
+    await admin.from("invitations").update({ expires_at: new Date(Date.now() - 1000).toISOString() }).eq("email", `${TAG}-exp@example.com`);
+    await check("invitations", "expired token fails", async () => ((await accept(po.db, tokExp)).reason === "invalid_or_expired" ? true : "expired accepted"));
+    await check("invitations", "a garbage token fails", async () => ((await accept(po.db, "not-a-token")).reason === "invalid_or_expired" ? true : "garbage accepted"));
+    await check("invitations", "already-a-member is rejected", () => rpcFails(acme.db.rpc("create_invitation", { p_org: org["acme-bank"], p_email: persona("po"), p_role: "client_member" })));
+    // cleanup: remove the test membership and invitations
+    await admin.from("memberships").delete().eq("user_id", po.uid).eq("org_id", org["acme-bank"]);
+    await admin.from("invitations").delete().in("email", [persona("po"), `${TAG}-exp@example.com`]);
+  }
   await check("acme-admin", "cannot read audit log", () => denied(acme.db.from("audit_log").select("id")));
 }
 
@@ -115,8 +148,8 @@ if (mem) {
     const r = (await rows(mem.db.from("memberships").select("user_id"))) ?? [];
     return r.every((x) => (x as { user_id: string }).user_id === mem.uid) ? true : "saw other members";
   });
-  await check("acme-member", "cannot invite", () =>
-    failsWrite(mem.db.from("invitations").insert([{ org_id: org["acme-bank"], email: `${TAG}@example.com`, role: "client_member", token_hash: `${TAG}-m`, expires_at: new Date(Date.now() + 864e5).toISOString(), invited_by: mem.uid }])));
+  await check("acme-member", "cannot invite", async () =>
+    ((await mem.db.rpc("create_invitation", { p_org: org["acme-bank"], p_email: `${TAG}@example.com`, p_role: "client_member" })).error ? true : "member invited"));
   await check("acme-member", "cannot see employee content", async () => (slugs(await rows(mem.db.from("content").select("slug"))).has("seed-employee-release") ? "LEAK" : true));
 }
 

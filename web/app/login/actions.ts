@@ -5,16 +5,20 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAuthActions, createServerClient } from "@insforge/sdk/ssr";
 import { DEMO_PERSONAS, demoEmail, demoLoginEnabled, demoPassword } from "@/lib/auth/demo";
+import { WORKSPACE_COOKIE, getSession, landingFor, safeNext } from "@/lib/authz";
 
 export type AuthState = { step: "email" | "code"; email?: string; error?: string; info?: string };
 
 const emailSchema = z.string().trim().toLowerCase().email().max(254);
 const codeSchema = z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from your email.");
 
-// Binds email-keyed provisioning (allow-list, client memberships, grants) to the new session.
-async function claimAccess() {
+// Binds email-keyed provisioning (allow-list, client memberships, grants) to the new session,
+// then sends the user to ?next (same-site only) or their role's home.
+async function claimAndLand(form: FormData): Promise<never> {
   const insforge = createServerClient({ cookies: await cookies() });
   await insforge.database.rpc("claim_provisioned_access");
+  const session = await getSession();
+  redirect(safeNext(form.get("next")) ?? (session ? landingFor(session) : "/account"));
 }
 
 export async function requestCode(_: AuthState, form: FormData): Promise<AuthState> {
@@ -35,8 +39,7 @@ export async function verifyCode(_: AuthState, form: FormData): Promise<AuthStat
   const auth = createAuthActions({ cookies: await cookies() });
   const { error } = await auth.verifyOtp({ email: email.data, otp: code.data });
   if (error) return { step: "code", email: email.data, error: "That code is invalid or has expired. Request a new one." };
-  await claimAccess();
-  redirect("/account");
+  return claimAndLand(form);
 }
 
 export async function demoSignIn(_: AuthState, form: FormData): Promise<AuthState> {
@@ -55,12 +58,12 @@ export async function demoSignIn(_: AuthState, form: FormData): Promise<AuthStat
       error: unverified ? "This demo account's email hasn't been verified yet." : "Demo sign-in failed. Try again.",
     };
   }
-  await claimAccess();
-  redirect("/account");
+  return claimAndLand(form);
 }
 
 export async function signOut() {
-  const auth = createAuthActions({ cookies: await cookies() });
-  await auth.signOut();
+  const store = await cookies();
+  await createAuthActions({ cookies: store }).signOut();
+  store.delete(WORKSPACE_COOKIE);
   redirect("/login");
 }

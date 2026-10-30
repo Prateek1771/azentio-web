@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Eyebrow } from "@/components/portal/primitives";
 import { DEMO_PERSONAS, demoEmail, demoLoginEnabled, demoPassword } from "@/lib/auth/demo";
 import { LoginPanel } from "./login-panel";
@@ -34,7 +35,9 @@ export default function LoginPage() {
             </ul>
           </div>
         </div>
-        <LoginPanel demos={demos} />
+        <Suspense>
+          <LoginPanel demos={demos} />
+        </Suspense>
       </div>
     </section>
   );

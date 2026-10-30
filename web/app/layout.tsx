@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { SessionNav, SignInLink } from "@/components/portal/session-nav";
 import { SiteHeader } from "@/components/portal/site-header";
 import { SiteFooter } from "@/components/portal/site-footer";
 import { AiraLauncher } from "@/components/portal/aira-launcher";
@@ -19,7 +21,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#main" className="skip-link">
           Skip to content
         </a>
-        <SiteHeader />
+        <SiteHeader
+          account={
+            <Suspense fallback={<SignInLink />}>
+              <SessionNav />
+            </Suspense>
+          }
+        />
         <main id="main" className="flex-1">
           {children}
         </main>

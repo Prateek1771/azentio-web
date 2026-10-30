@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, KeyRound, Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DemoPersona } from "@/lib/auth/demo";
@@ -26,6 +27,8 @@ export function LoginPanel({ demos }: { demos: Demo[] }) {
   const [demoState, demoAction, demoPending] = useActionState(demoSignIn, { step: "email" } as AuthState);
   const [demo, setDemo] = useState<Demo | null>(null);
   const demoForm = useRef<HTMLFormElement>(null);
+  const next = useSearchParams().get("next") ?? "";
+  const nextField = <input type="hidden" name="next" value={next} />;
 
   // Visible autofill, then submit: the masked value is cosmetic — the server holds the real password.
   useEffect(() => {
@@ -48,6 +51,7 @@ export function LoginPanel({ demos }: { demos: Demo[] }) {
               <p className="text-sm text-slate">{demo.org} · {demo.role}</p>
             </div>
             <input type="hidden" name="alias" value={demo.alias} />
+            {nextField}
             <label className="grid gap-2">
               <span className={label}>Email</span>
               <input className={field} value={demo.email} readOnly />
@@ -75,6 +79,7 @@ export function LoginPanel({ demos }: { demos: Demo[] }) {
               <h2 className="mt-2 text-2xl font-bold tracking-tight">Enter your code</h2>
             </div>
             <input type="hidden" name="email" value={email} />
+            {nextField}
             <p className="text-sm text-slate">
               We sent a 6-digit code to <strong className="text-ink">{email}</strong>. It expires in 5 minutes.
             </p>
