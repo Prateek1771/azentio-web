@@ -33,7 +33,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </main>
         <SiteFooter />
-        <AiraLauncher />
+        {/* usePathname() is request data under Cache Components; the launcher streams in after the shell */}
+        <Suspense>
+          <AiraLauncher />
+        </Suspense>
         <Toaster />
       </body>
     </html>

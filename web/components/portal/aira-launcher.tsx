@@ -2,6 +2,7 @@
 
 import { Fragment, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Loader2, Send, ThumbsDown, ThumbsUp, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,17 @@ export function AiraLauncher() {
   const [busy, setBusy] = useState(false);
   const [signedOut, setSignedOut] = useState(false);
   const end = useRef<HTMLDivElement>(null);
+  // The launcher sits in the root layout and survives sign-in (a client-side redirect), so a 401 seen
+  // before login must not stick: any navigation clears it, and the next question re-checks the session.
+  const pathname = usePathname();
+  const [seenPath, setSeenPath] = useState(pathname);
+  if (pathname !== seenPath) {
+    setSeenPath(pathname);
+    if (signedOut) {
+      setSignedOut(false);
+      setTurns([]);
+    }
+  }
 
   async function ask(question: string) {
     if (!question.trim() || busy) return;
@@ -91,7 +103,7 @@ export function AiraLauncher() {
             <div className="flex flex-1 flex-col justify-center gap-3 p-6 text-center">
               <p className="text-[19px] font-bold text-ink">Sign in to ask AIRA</p>
               <p className="text-sm leading-[1.65] text-slate">AIRA answers questions about approved market observations and themes, and links every answer to its evidence.</p>
-              <Link href="/login" className="mx-auto rounded-[5px] bg-green px-5 py-3 text-sm font-bold text-on-green">Sign in</Link>
+              <Link href={`/login?next=${encodeURIComponent(pathname)}`} className="mx-auto rounded-[5px] bg-green px-5 py-3 text-sm font-bold text-on-green">Sign in</Link>
             </div>
           ) : (
             <>
@@ -171,7 +183,14 @@ export function AiraLauncher() {
         type="button"
         aria-label={open ? "Close AIRA" : "Open AIRA"}
         aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          // reopening re-checks too (e.g. signed in from another tab)
+          if (!open && signedOut) {
+            setSignedOut(false);
+            setTurns([]);
+          }
+          setOpen(!open);
+        }}
         className="fixed right-6 bottom-6 z-[60] grid size-[58px] place-items-center rounded-full border-2 border-navy/10 bg-green text-navy shadow-float transition-transform hover:-translate-y-0.5 max-sm:right-4 max-sm:bottom-4"
       >
         <span className="text-[13px] leading-none font-extrabold tracking-[.6px]">AIRA</span>

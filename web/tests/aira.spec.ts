@@ -42,6 +42,22 @@ test("signed-out visitors are asked to sign in", async ({ page }) => {
   await expect(page.getByRole("dialog", { name: "AIRA assistant" }).getByText("Sign in to ask AIRA")).toBeVisible();
 });
 
+// Regression: the launcher lives in the root layout, so a 401 seen before sign-in used to stick after login.
+test("signing in from the AIRA prompt unlocks AIRA without a reload", async ({ page }) => {
+  await page.goto("/");
+  await ask(page, "How do seasonal cash-flow cycles affect SME assessments?").catch(() => {});
+  const panel = page.getByRole("dialog", { name: "AIRA assistant" });
+  await panel.getByRole("link", { name: "Sign in" }).click(); // client-side navigation, layout stays mounted
+  await page.waitForURL(/\/login\?next=%2F$/);
+  const demo = page.getByRole("button", { name: /Portal admin/ });
+  test.skip((await demo.count()) === 0, "demo login not enabled on this server");
+  await demo.click();
+  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20_000 });
+  const reply = await ask(page, "How do seasonal cash-flow cycles affect SME assessments?");
+  await expect(reply).toHaveAttribute("data-verdict", /answered|no_evidence/);
+  await expect(panel.getByText("Sign in to ask AIRA")).toHaveCount(0);
+});
+
 test("a client gets a cited answer from approved evidence, with the disclaimer, and can rate it", async ({ browser }) => {
   const page = await as(browser, /Acme Bank/);
   await page.goto("/learning");
