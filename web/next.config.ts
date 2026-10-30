@@ -4,7 +4,8 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
-  experimental: { authInterrupts: true },
+  // Server actions carry publisher video uploads (validated ≤ 200 MB in the action).
+  experimental: { authInterrupts: true, serverActions: { bodySizeLimit: "210mb" } },
   turbopack: {
     rules: {
       "*.css": {

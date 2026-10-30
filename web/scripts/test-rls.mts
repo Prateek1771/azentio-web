@@ -184,6 +184,59 @@ if (adm) {
   if (acme) await check("admin", "cannot give a platform grant to a client user", () => failsWrite(adm.db.from("grants").insert([{ user_id: acme.uid, kind: "moderate" }])));
 }
 
+// ── Phase 4: live sessions, media, playground ────────────────────────────
+{
+  const po = p.po, pub = p.publisher, acmeA = p["acme-admin"], mod = p.moderator;
+  const yt = "https://www.youtube.com/embed/dQw4w9WgXcQ";
+  if (po) {
+    await check("po", "cannot create live sessions (no publish grant)", () =>
+      failsWrite(po.db.from("live_sessions").insert([{ title: `${TAG}-x`, audience: "employee", embed_url: yt }])));
+    await check("po", "cannot add media", () =>
+      failsWrite(po.db.from("media").insert([{ title: `${TAG}-x`, audience: "employee", embed_url: yt }])));
+  }
+  if (pub) {
+    const ins = await pub.db.from("live_sessions").insert([{ title: `${TAG}-emp`, audience: "employee", embed_url: yt }]).select("id").single();
+    const sid = (ins.data as { id: string } | null)?.id;
+    await check("publisher", "creates an employee-only session", async () => (sid ? true : `insert failed: ${ins.error?.message}`));
+    const med = await pub.db.from("media").insert([{ title: `${TAG}-rec`, audience: "employee", embed_url: yt, published: true }]).select("id").single();
+    const mid = (med.data as { id: string } | null)?.id;
+    await check("publisher", "adds an employee-only recording", async () => (mid ? true : `insert failed: ${med.error?.message}`));
+    await check("publisher", "javascript: embed URL is rejected", () =>
+      failsWrite(pub.db.from("live_sessions").insert([{ title: `${TAG}-js`, audience: "employee", embed_url: "javascript:alert(1)" }])));
+    await check("publisher", "unknown-host embed URL is rejected", () =>
+      failsWrite(pub.db.from("media").insert([{ title: `${TAG}-evil`, audience: "employee", embed_url: "https://evil.example/frame" }])));
+    if (sid && mid) {
+      await check("anon", "cannot see employee-only session or recording", async () =>
+        ((await denied(anonDb.from("live_sessions").select("id").eq("id", sid))) === true && (await denied(anonDb.from("media").select("id").eq("id", mid))) === true) || "LEAK");
+      if (acmeA) await check("acme-admin", "cannot see employee-only session or recording", async () =>
+        ((await denied(acmeA.db.from("live_sessions").select("id").eq("id", sid))) === true && (await denied(acmeA.db.from("media").select("id").eq("id", mid))) === true) || "LEAK");
+      if (po) await check("po", "sees employee-only session and recording", async () =>
+        ((await rows(po.db.from("live_sessions").select("id").eq("id", sid)))?.length && (await rows(po.db.from("media").select("id").eq("id", mid)))?.length ? true : "missing"));
+    }
+  }
+  const { data: off } = await admin.from("offerings").select("id").eq("slug", "sme-credit-decisioning").single();
+  const offId = (off as { id: string }).id;
+  const run = { offering_id: offId, scenario_key: "rls-test", mode: "deterministic", inputs: {}, output: { headline: TAG } };
+  if (po) {
+    const r = await po.db.from("playground_runs").insert([run]).select("id").single();
+    const rid = (r.data as { id: string } | null)?.id;
+    await check("po", "saves own playground run", async () => (rid ? true : `insert failed: ${r.error?.message}`));
+    if (rid) {
+      await check("po", "adds feedback to own run", async () =>
+        ((await po.db.from("playground_runs").update({ feedback: { useful: true, rating: 4 } }).eq("id", rid)).error ? "feedback failed" : true));
+      await check("po", "cannot rewrite a run's output", async () => {
+        const { data, error } = await po.db.from("playground_runs").update({ output: { headline: "tampered" } }).eq("id", rid).select();
+        return error || !(data as unknown[])?.length ? true : "output rewritten";
+      });
+      if (mod) await check("moderator", "cannot read another employee's runs", () => denied(mod.db.from("playground_runs").select("id").eq("id", rid)));
+    }
+  }
+  if (acmeA) await check("acme-admin", "cannot use the employee playground", () => failsWrite(acmeA.db.from("playground_runs").insert([run])));
+  await admin.from("live_sessions").delete().like("title", `${TAG}%`);
+  await admin.from("media").delete().like("title", `${TAG}%`);
+  await admin.from("playground_runs").delete().eq("scenario_key", "rls-test");
+}
+
 // ── cleanup (admin key) ──────────────────────────────────────────────────
 await admin.from("demo_requests").delete().eq("name", TAG);
 await admin.from("invitations").delete().like("token_hash", `${TAG}%`);

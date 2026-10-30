@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { Announcement } from "@/components/site/announcement";
 import { ArrowUpRight } from "lucide-react";
 import { capabilities, featuredProducts, heroSlides, newsItems, trustItems, whoWeAre } from "@/lib/content";
 import { CtaLink, Eyebrow, Section, SectionHead, TextLink } from "@/components/portal/primitives";
@@ -10,6 +12,9 @@ import { NumberedCard } from "@/components/site/numbered-card";
 export default function Home() {
   return (
     <>
+      <Suspense>
+        <Announcement />
+      </Suspense>
       <HeroCarousel slides={heroSlides} />
 
       <Section>

@@ -18,8 +18,8 @@ async function EmployeeHome() {
       />
       <Section className="py-14">
         <div className="grid grid-cols-3 gap-5 max-[959px]:grid-cols-2 max-sm:grid-cols-1">
-          <Tile title="Playground" body="Guided product workflows on synthetic scenarios. Every output is labelled simulated." badge="Phase 4" />
-          <Tile title="Internal Live" body="Employee-only broadcasts and past recordings." badge="Phase 4" />
+          <Tile title="Playground" body="Guided product workflows on synthetic scenarios. Every output is labelled simulated." href="/e/playground" />
+          <Tile title="Internal Live" body="Employee-only broadcasts and past recordings." href="/e/live" />
           <Tile title="Experiments" body="Submit and follow internal experiments and hackathon team spaces." badge="Phase 7" />
           <Tile title="Shared learning" body="Approved, de-identified market observations and themes." badge="Phase 6" />
           <Tile

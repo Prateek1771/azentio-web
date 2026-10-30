@@ -10,16 +10,16 @@ export const metadata: Metadata = { title: "Staff console" };
 const TILES = [
   { grant: "moderate", title: "Moderation queue", body: "Review submitted contributions, redact shared copies, publish or return.", badge: "Phase 6" },
   { grant: "moderate", title: "Reports", body: "Investigate reported contributions and record decisions.", badge: "Phase 6" },
-  { grant: "publish_media", title: "Publisher workspace", body: "Homepage banners, public content, live stream and recordings.", badge: "Phase 4" },
+  { grant: "publish_media", title: "Publisher workspace", body: "Homepage banners, public content, live stream and recordings.", href: "/s/publisher" },
   { grant: "product_owner", title: "Themes & ideas", body: "Turn approved themes into improvement ideas with audited status.", badge: "Phase 6" },
   { grant: "portal_admin", title: "Organisations & roles", body: "Client orgs, entitlements, employee allow-list and grants.", badge: "Phase 7" },
   { grant: "portal_admin", title: "Audit log", body: "Every privileged action, append-only.", badge: "Phase 10" },
   { grant: "portal_admin", title: "AIRA guardrails", body: "Rules, kill switch and blocked-event review.", badge: "Phase 8" },
-] as const;
+] as { grant: string; title: string; body: string; badge?: string; href?: string }[];
 
 async function StaffHome() {
   const s = await requireGrant("portal_admin", "moderate", "publish_media", "product_owner");
-  const tiles = TILES.filter((t) => s.grants.includes(t.grant));
+  const tiles = TILES.filter((t) => s.grants.includes(t.grant as (typeof s.grants)[number]));
   return (
     <>
       <PortalBand
@@ -30,7 +30,7 @@ async function StaffHome() {
       <Section className="py-14">
         <div className="grid grid-cols-3 gap-5 max-[959px]:grid-cols-2 max-sm:grid-cols-1">
           {tiles.map((t) => (
-            <Tile key={t.title} title={t.title} body={t.body} badge={t.badge} />
+            <Tile key={t.title} title={t.title} body={t.body} badge={t.badge} href={t.href} />
           ))}
           <Tile title="Employee portal" body="Playground, live sessions and experiments." href="/e" />
         </div>
