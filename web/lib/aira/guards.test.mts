@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { CANARY, type Rule, type Source, buildMessages, checkInput, checkOutput, sanitize } from "./guards.ts";
+import { CANARY, type Rule, type Source, buildMessages, checkInput, checkOutput, checkRedLines, sanitize } from "./guards.ts";
+import { matchGuide, matchWorkspace } from "./guide.ts";
 
 // A representative slice of the seeded guardrail_rules (patterns as stored in the database).
 const R = (key: string, stage: Rule["stage"], pattern: string, kind: Rule["kind"] = "regex", severity: Rule["severity"] = "high"): Rule => ({ key, stage, pattern, kind, severity });
@@ -40,7 +41,7 @@ const sources: Source[] = [
 const out = (a: string) => checkOutput(a, sources, rules).hit?.key ?? "ok";
 assert.equal(out("Seasonal cycles are often misread as distress [S1][S2].\n\nSmall sample, so treat it as an early signal [S2]."), "ok");
 assert.equal(out("Seasonal cycles are misread [S1][S3]."), "out.citation", "citing an unretrieved source is blocked");
-assert.equal(out("Seasonal cycles are misread [S1].\n\nThis paragraph has no citation."), "out.citation");
+assert.equal(out("Seasonal cycles are misread [S1].\n\nA follow-up paragraph without its own citation."), "ok", "one valid citation is enough");
 assert.equal(out("No citations at all."), "out.citation");
 assert.equal(out(`My instructions say ${CANARY} [S1].`), "out.prompt_leak");
 assert.equal(out("Acme Bank reported this first [S1]."), "out.org_name.acme-bank");
@@ -53,4 +54,25 @@ assert.equal(out("Contact rm@bank.co for the data [S1]."), "out.pii.email");
 const msgs = buildMessages("q", sources);
 assert.ok(msgs[0].content.includes(CANARY) && msgs[1].content.includes('<source id="S1" kind="shared">'));
 
-console.log("✓ AIRA guards: input, output, prompt (all assertions passed)");
+// general answers: no citations needed, every other red line still applies
+assert.equal(checkRedLines("A debt service coverage ratio compares operating income with debt payments.", rules), null);
+assert.equal(checkRedLines("Acme Bank does this well.", rules)?.key, "out.org_name.acme-bank");
+assert.equal(checkRedLines("It will be released by June.", rules)?.key, "out.commitment");
+
+// portal guide + workspace matching
+const ids = (q: string) => matchGuide(q).map((g) => g.id);
+assert.equal(ids("what is this about")[0], "overview");
+assert.equal(ids("hi")[0], "overview");
+assert.ok(ids("tell me about RIVA").includes("product:riva"));
+assert.ok(ids("how do I share an observation?").includes("contribute"));
+assert.ok(ids("what products do you have").includes("products"));
+assert.deepEqual(ids("weather in Paris"), []);
+const docs = [
+  { id: "e1", title: "Seasonality-adjusted peer bands", href: "/e/experiments/e1", text: "", keywords: ["experiment"] },
+  { id: "e2", title: "Auto-split merged statement PDFs", href: "/e/experiments/e2", text: "", keywords: ["experiment"] },
+];
+assert.deepEqual(matchWorkspace(docs, "what are my recent projects?").map((d) => d.id), ["e1", "e2"]);
+assert.deepEqual(matchWorkspace(docs, "status of the peer bands work").map((d) => d.id), ["e1"]);
+assert.deepEqual(matchWorkspace(docs, "weather in Paris"), []);
+
+console.log("✓ AIRA guards: input, output, prompt, guide (all assertions passed)");

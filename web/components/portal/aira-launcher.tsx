@@ -6,13 +6,17 @@ import { usePathname } from "next/navigation";
 import { Loader2, Send, ThumbsDown, ThumbsUp, TriangleAlert, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Source = { n: number; id: string; kind: "shared" | "theme"; title: string };
-type Reply = { interactionId: string | null; verdict: "answered" | "refused" | "blocked" | "no_evidence"; answer?: string; message?: string; sources: Source[] };
+type Source = { n: number; id: string; kind: "shared" | "theme" | "mine" | "guide"; title: string; href?: string };
+type Reply = { interactionId: string | null; verdict: "answered" | "general" | "refused" | "blocked" | "no_evidence"; answer?: string; message?: string; sources: Source[] };
 type Turn = { q: string; r?: Reply; error?: boolean; feedback?: string };
 
-const EXAMPLES = ["How do seasonal cash-flow cycles affect SME assessments?", "What are the limitations of the seasonality evidence?"];
+const EXAMPLES = ["What is this portal about?", "How do seasonal cash-flow cycles affect SME assessments?", "What are my recent projects?"];
 const DISCLAIMER = "Synthesised from approved, de-identified contributions. Not advice.";
-const href = (s: Source) => (s.kind === "shared" ? `/learning/${s.id}` : "/learning/themes");
+const disclaimer = (r: Reply) =>
+  r.verdict === "general"
+    ? "General answer from AIRA's own knowledge, not from approved evidence. Not advice."
+    : r.sources.every((s) => s.kind === "shared" || s.kind === "theme") ? DISCLAIMER : "Based on the cited sources. Not advice.";
+const href = (s: Source) => s.href ?? (s.kind === "shared" ? `/learning/${s.id}` : "/learning/themes");
 
 // [S1] markers become links to the cited source; the text itself is rendered as plain text.
 function Cited({ text, sources }: { text: string; sources: Source[] }) {
@@ -92,7 +96,7 @@ export function AiraLauncher() {
           <div className="on-dark flex items-center justify-between bg-navy px-5 py-4 text-white">
             <div>
               <p className="text-[13px] font-extrabold tracking-[.6px]">AIRA</p>
-              <p className="text-xs text-on-dark-muted">Answers cite approved, shared learning only.</p>
+              <p className="text-xs text-on-dark-muted">Answers cite their sources. Never shares other organisations&rsquo; data.</p>
             </div>
             <button type="button" aria-label="Close AIRA" onClick={() => setOpen(false)} className="rounded p-1 hover:text-green">
               <X className="size-5" aria-hidden />
@@ -110,7 +114,7 @@ export function AiraLauncher() {
               <div className="flex-1 overflow-y-auto px-4 py-4 text-sm" aria-live="polite">
                 {!turns.length && (
                   <div className="grid gap-2">
-                    <p className="text-slate">Ask about patterns in approved, de-identified contributions. Try:</p>
+                    <p className="text-slate">Ask about the portal, your own work, or patterns in approved shared learning. Try:</p>
                     {EXAMPLES.map((e) => (
                       <button key={e} type="button" onClick={() => ask(e)} className="rounded-lg border border-line px-3 py-2 text-left hover:border-green-700">{e}</button>
                     ))}
@@ -119,11 +123,11 @@ export function AiraLauncher() {
                 {turns.map((t, i) => (
                   <div key={i} className="mb-4 grid gap-2">
                     <p className="ml-8 rounded-xl rounded-br-sm bg-navy px-3 py-2 text-white">{t.q}</p>
-                    {!t.r && !t.error && <p className="inline-flex items-center gap-2 text-slate"><Loader2 className="size-4 animate-spin" aria-hidden /> Checking the approved evidence…</p>}
+                    {!t.r && !t.error && <p className="inline-flex items-center gap-2 text-slate"><Loader2 className="size-4 animate-spin" aria-hidden /> Checking the sources…</p>}
                     {t.error && <p className="text-orange-800">Something went wrong. Please try again.</p>}
                     {t.r && (
-                      <div data-verdict={t.r.verdict} className={cn("mr-4 rounded-xl rounded-bl-sm border px-3 py-2.5 leading-[1.6]", t.r.verdict === "answered" ? "border-line bg-light" : "border-amber-200 bg-amber-50")}>
-                        {t.r.verdict === "answered" ? (
+                      <div data-verdict={t.r.verdict} className={cn("mr-4 rounded-xl rounded-bl-sm border px-3 py-2.5 leading-[1.6]", t.r.verdict === "answered" || t.r.verdict === "general" ? "border-line bg-light" : "border-amber-200 bg-amber-50")}>
+                        {t.r.verdict === "answered" || t.r.verdict === "general" ? (
                           <Cited text={t.r.answer ?? ""} sources={t.r.sources} />
                         ) : (
                           <p className="flex gap-2"><TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden />{t.r.message}</p>
@@ -136,9 +140,9 @@ export function AiraLauncher() {
                             ))}
                           </ul>
                         )}
-                        {t.r.verdict === "answered" && (
+                        {(t.r.verdict === "answered" || t.r.verdict === "general") && (
                           <>
-                            <p className="mt-2 text-[11px] text-slate">{DISCLAIMER}</p>
+                            <p className="mt-2 text-[11px] text-slate">{disclaimer(t.r)}</p>
                             <div className="mt-2 flex items-center gap-1 text-slate">
                               {t.feedback ? (
                                 <span role="status" className="text-xs font-bold text-green-700">Thanks for the feedback.</span>
@@ -167,7 +171,7 @@ export function AiraLauncher() {
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(q); } }}
                   rows={2}
                   maxLength={1000}
-                  placeholder="Ask about approved shared learning…"
+                  placeholder="Ask about the portal, your work or shared learning…"
                   className="min-h-[44px] flex-1 resize-none rounded-md border border-line-strong px-3 py-2 text-sm outline-none focus:border-green-700"
                 />
                 <button type="submit" disabled={busy || !q.trim()} aria-label="Send question" className="grid size-11 place-items-center rounded-md bg-green text-navy disabled:opacity-50">

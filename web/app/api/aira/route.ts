@@ -13,11 +13,14 @@ export async function POST(request: Request) {
   const parsed = body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ verdict: "refused", message: "Ask a question in plain text.", sources: [] }, { status: 400 });
 
+  const ws = await activeWorkspace(session);
   const result = await runAira(parsed.data.question, {
     userDb: (await createInsForgeServerClient()).database,
     adminDb: createInsForgeAdminClient().database,
     userId: session.user.id,
-    orgId: (await activeWorkspace(session))?.org_id ?? null,
+    orgId: ws?.org_id ?? null,
+    orgSlug: ws?.slug ?? null,
+    isEmployee: isEmployee(session),
     isMember: isEmployee(session) || clientOrgs(session).length > 0,
     chat: (messages) => chat(messages, { maxTokens: 450 }),
   });

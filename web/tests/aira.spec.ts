@@ -85,6 +85,22 @@ test("personal data and injection attempts are refused before any model call", a
   expect(rows.some((r: { question: string }) => r.question === "[redacted: personal data]")).toBe(true);
 });
 
+test("AIRA chats normally: portal questions, a greeting, and the caller's own work", async ({ browser }) => {
+  const client = await as(browser, /Acme Bank/);
+  const about = await ask(client, "What is this portal about?");
+  await expect(about).toHaveAttribute("data-verdict", "answered");
+  await expect(about.getByRole("list", { name: "Sources" })).toContainText("About azentio.ai");
+  await expect(about).not.toContainText(/Acme Bank|Borealis|Cedar/);
+  const hi = await ask(client, "hi");
+  await expect(hi).toHaveAttribute("data-verdict", "general");
+  await expect(hi).toContainText("I'm AIRA");
+
+  const po = await as(browser, /Product owner/);
+  const mine = await ask(po, "What are my recent projects?");
+  await expect(mine).toHaveAttribute("data-verdict", "answered");
+  await expect(mine.getByRole("link", { name: /Seasonality-adjusted peer bands|Auto-split merged statement PDFs/ }).first()).toBeVisible();
+});
+
 test("the admin kill switch turns AIRA off and back on", async ({ browser }) => {
   const admin = await as(browser, /Portal admin/);
   await admin.goto("/s/aira");
