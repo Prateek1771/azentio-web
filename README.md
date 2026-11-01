@@ -16,7 +16,7 @@ questions with citations to approved evidence only.
 - **Server-enforced access:** Postgres RLS + tenant membership + separate grants. Nothing is trusted from the browser.
 - **Contribution lifecycle:** draft → submitted → returned ⇄ submitted → published / rejected → withdrawn. Every transition is audited.
 - **Privacy by design:** published copies hold only reviewed fields, 4 separate consents (store / publish / attribute / train), trend counts suppressed below 3 organisations, withdrawal purged in ≤ 60 s.
-- **AIRA:** read-only assistant over published shared learning (Postgres full-text retrieval through the caller's RLS, InsForge Model Gateway). 15 layered guardrails: deterministic input checks, citations must come from retrieved sources, and a red-line output guard. The answer is complete before anything is shown. Evaluated with the H.I.R.E. framework on a 60-question gold set.
+- **AIRA:** read-only assistant that answers from published shared learning and themes, the caller's own observations, experiments and library guides (all read through their RLS), and a curated portal and product guide. Questions nothing matches get a clearly labelled general answer. 15 layered guardrails: deterministic input checks, citations must come from retrieved sources, and a red-line output guard on every answer. The answer is complete before anything is shown. Evaluated with the H.I.R.E. framework on a 60-question gold set.
 - **AI assists (suggestions only):** redaction suggestions, duplicate detection (`pg_trgm`), theme clustering and naming, and cited trend digests.
 - **Federated learning (P2):** opt-in demo with 3 isolated synthetic client datasets, FedAvg, update clipping/validation, dropout, and a candidate model registry with human approval.
 
@@ -95,7 +95,7 @@ npm run dev                  # http://localhost:3100
 | `K_MIN_ORGS` | Minimum distinct organisations for trend counts (default 3) |
 | `NEXT_PUBLIC_APP_URL` | Invite links and auth redirects |
 
-Database: `npx -y @insforge/cli db migrations up --all`, then `npm run seed` (synthetic orgs, users and observations).
+Database: `npx -y @insforge/cli db migrations up --all`, then `npm run seed` (synthetic orgs, users, observations, themes, experiments, teams and an FL programme, so every demo login has data).
 
 > Never commit `.insforge/`, `.mcp.json` or `.env*`. They hold admin keys and are git-ignored.
 
